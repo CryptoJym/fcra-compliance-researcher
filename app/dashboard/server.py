@@ -5,6 +5,8 @@ from fastapi import FastAPI, Depends
 from .api import router as api_router
 from .auth import require_basic_auth
 from fastapi.responses import HTMLResponse
+from fastapi import Request, Form
+from .api_review import router as api_review_router
 from datetime import datetime
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -14,6 +16,7 @@ from sqlalchemy.orm import Session
 
 app = FastAPI()
 app.include_router(api_router)
+app.include_router(api_review_router)
 
 TEMPLATES = Environment(
     loader=FileSystemLoader(str(Path(__file__).resolve().parent / "templates")),
@@ -62,4 +65,29 @@ async def index(_: bool = Depends(require_basic_auth)):
 
     template = TEMPLATES.get_template("index.html")
     html = template.render(rows=rows, counts=counts, percent=percent, status_filter="", type_filter="")
+    return HTMLResponse(html)
+
+
+@app.get("/review")
+async def review_queue(_: bool = Depends(require_basic_auth)):
+    engine = get_engine(settings.database_url)
+    with Session(engine) as session:
+        runs = (
+            session.query(JurisdictionRun)
+            .filter(JurisdictionRun.review_status.in_(["needs_review", None]))
+            .order_by(JurisdictionRun.started_at.desc())
+            .limit(200)
+            .all()
+        )
+    rows = []
+    for r in runs:
+        rows.append({
+            "id": r.id,
+            "jurisdiction_path": r.jurisdiction_path,
+            "status": r.status,
+            "started_at": r.started_at.isoformat() if r.started_at else "",
+            "completed_at": r.completed_at.isoformat() if r.completed_at else "",
+        })
+    template = TEMPLATES.get_template("review.html")
+    html = template.render(rows=rows, status_filter="needs_review")
     return HTMLResponse(html)
