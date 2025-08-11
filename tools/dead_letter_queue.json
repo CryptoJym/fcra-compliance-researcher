@@ -2,21 +2,34 @@
   {
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
+<<<<<<< HEAD
     "error": "RetryError[<Future at 0x111e23890 state=finished raised RuntimeError>]"
+=======
+    "error": "RetryError[<Future at 0x12af7b890 state=finished raised RuntimeError>]"
+>>>>>>> origin/main
   },
   {
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
+<<<<<<< HEAD
     "error": "RetryError[<Future at 0x11ce2f9d0 state=finished raised RuntimeError>]"
+=======
+    "error": "RetryError[<Future at 0x11d5e3750 state=finished raised RuntimeError>]"
+>>>>>>> origin/main
   },
   {
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
+<<<<<<< HEAD
     "error": "RetryError[<Future at 0x131523750 state=finished raised RuntimeError>]"
+=======
+    "error": "RetryError[<Future at 0x11847b750 state=finished raised RuntimeError>]"
+>>>>>>> origin/main
   },
   {
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
+<<<<<<< HEAD
     "error": "RetryError[<Future at 0x11813b9d0 state=finished raised RuntimeError>]"
   },
   {
@@ -48,5 +61,8 @@
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
     "error": "RetryError[<Future at 0x130c37b10 state=finished raised RuntimeError>]"
+=======
+    "error": "RetryError[<Future at 0x1176f3750 state=finished raised RuntimeError>]"
+>>>>>>> origin/main
   }
 ]

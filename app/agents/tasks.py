@@ -40,7 +40,19 @@ def _push_dlq_safe(payload: dict) -> None:
 
 
 @shared_task(name="app.agents.tasks.process_jurisdiction", autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
+<<<<<<< HEAD
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=8), reraise=True)
+=======
+@retry(
+    stop=stop_after_attempt(getattr(settings, "retry_max_attempts", 3)),
+    wait=wait_exponential(
+        multiplier=getattr(settings, "retry_min_seconds", 0.5),
+        min=getattr(settings, "retry_min_seconds", 0.5),
+        max=getattr(settings, "retry_max_seconds", 8.0),
+    ),
+    reraise=True,
+)
+>>>>>>> origin/main
 def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, skip_merge: bool = False, trace_id: Optional[str] = None) -> dict:
     if trace_id:
         set_trace_id(trace_id)
