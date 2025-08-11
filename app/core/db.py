@@ -22,6 +22,11 @@ class JurisdictionRun(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     metrics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # Human-in-the-loop fields
+    review_status: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    review_notes: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    reviewed_by: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    reviewed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 def get_engine(database_url: str):
