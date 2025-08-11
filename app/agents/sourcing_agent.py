@@ -63,9 +63,22 @@ class SourcingAgent(Agent):
         }
 
     def add_to_vector(self, docs: List[SourceDocument]) -> None:
-        texts = [d.content for d in docs]
-        metadatas = [self._metadoc(d) for d in docs]
-        self.vector_store.add_texts(texts, metadatas)
+        # Dedupe by content hash, skip duplicates in this batch
+        seen = set()
+        texts = []
+        metas = []
+        for d in docs:
+            m = self._metadoc(d)
+            # hash
+            h = hashlib.sha256(d.content.encode("utf-8")).hexdigest()
+            if h in seen:
+                continue
+            seen.add(h)
+            m["content_hash"] = h
+            texts.append(d.content)
+            metas.append(m)
+        if texts:
+            self.vector_store.add_texts(texts, metas)
 
     def search_and_collect(self, jurisdiction: str, queries: List[str]) -> List[SourceDocument]:
         results: List[SourceDocument] = []
