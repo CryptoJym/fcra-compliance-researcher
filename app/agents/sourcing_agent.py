@@ -16,6 +16,7 @@ from .base import Agent
 from ..config.settings import settings
 from ..core.logger import setup_logger
 from ..core.vector_store import VectorStore
+from ..core.search import get_default_search_provider
 
 
 @dataclass
@@ -68,17 +69,37 @@ class SourcingAgent(Agent):
 
     def search_and_collect(self, jurisdiction: str, queries: List[str]) -> List[SourceDocument]:
         results: List[SourceDocument] = []
+        provider = get_default_search_provider()
+        # Expand: for non-URL queries, use provider to find candidate URLs
+        expanded_urls: List[str] = []
         for q in queries:
-            # Placeholder: real impl would call Google CSE / Perplexity
-            # For now, attempt to fetch the query if it is a URL
             if q.startswith("http"):
-                html = self._fetch(q)
-                if not html:
-                    continue
-                text = self._parse_html(html)
-                title = q.split("//")[-1]
-                snippet = text[:500]
-                results.append(SourceDocument(url=q, title=title, published_at=None, content=text, jurisdiction_tags=[jurisdiction], snippet=snippet))
+                expanded_urls.append(q)
+            else:
+                hits = provider.search(q, num_results=5)
+                expanded_urls.extend([h.url for h in hits if h.url])
+        # Deduplicate
+        seen = set()
+        for url in expanded_urls:
+            if url in seen:
+                continue
+            seen.add(url)
+            html = self._fetch(url)
+            if not html:
+                continue
+            text = self._parse_html(html)
+            title = url.split("//")[-1]
+            snippet = text[:500]
+            results.append(
+                SourceDocument(
+                    url=url,
+                    title=title,
+                    published_at=None,
+                    content=text,
+                    jurisdiction_tags=[jurisdiction],
+                    snippet=snippet,
+                )
+            )
         if results:
             self.add_to_vector(results)
         return results

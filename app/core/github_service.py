@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import base64
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional
 
@@ -45,7 +45,7 @@ def create_branch_and_commit_and_pr(
     base_ref = repo.get_git_ref(f"heads/{base_branch}")
     base_sha = base_ref.object.sha
 
-    branch_name = f"{branch_prefix}/{file_path.stem}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    branch_name = f"{branch_prefix}/{file_path.stem}-{datetime.now(UTC).strftime('%Y%m%d%H%M%S')}"
     repo.create_git_ref(ref=f"refs/heads/{branch_name}", sha=base_sha)
 
     # Read local file content and commit to GitHub on new branch

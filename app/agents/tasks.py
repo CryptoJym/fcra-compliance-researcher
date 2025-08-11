@@ -21,12 +21,31 @@ from .merge_agent import MergeAgent
 logger = setup_logger("tasks")
 
 
+def _notify_slack_safe(message: str) -> None:
+    try:
+        from ..core.notifications import notify_slack  # type: ignore
+        notify_slack(message)
+    except Exception:
+        # Optional integration. Ignore if not available.
+        pass
+
+
+def _push_dlq_safe(payload: dict) -> None:
+    try:
+        from ..core.dlq import push_to_dlq  # type: ignore
+        push_to_dlq(payload)
+    except Exception:
+        # Optional integration. Ignore if not available.
+        pass
+
+
 @shared_task(name="app.agents.tasks.process_jurisdiction", autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=8), reraise=True)
 def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, skip_merge: bool = False) -> dict:
     logger.info(f"Processing task via Celery: {jurisdiction_path}")
 
     record_run(settings.database_url, jurisdiction_path, status="in_progress")
+    _notify_slack_safe(f"Started: {jurisdiction_path}")
 
     vector = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
     sourcing = SourcingAgent(vector)
@@ -53,6 +72,8 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
             ok, details = validation.run(jurisdiction_file, patch_path)
             if not ok:
                 record_run(settings.database_url, jurisdiction_path, status="error", metrics=details)
+                _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "validation", "details": details})
+                _notify_slack_safe(f"Validation failed: {jurisdiction_path}")
                 return {"status": "validation_failed", "details": details}
 
         # Merge
@@ -60,11 +81,16 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
             ok, details = merge.run(jurisdiction_file, patch_path)
             if not ok:
                 record_run(settings.database_url, jurisdiction_path, status="error", metrics=details)
+                _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "merge", "details": details})
+                _notify_slack_safe(f"Merge failed: {jurisdiction_path}")
                 return {"status": "merge_failed", "details": details}
 
         record_run(settings.database_url, jurisdiction_path, status="completed")
+        _notify_slack_safe(f"Completed: {jurisdiction_path}")
         return {"status": "completed", "jurisdiction": jurisdiction_path}
     except Exception as e:
         logger.exception(f"Celery task failed: {jurisdiction_path}: {e}")
         record_run(settings.database_url, jurisdiction_path, status="error", metrics={"error": str(e)})
+        _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "task", "error": str(e)})
+        _notify_slack_safe(f"Error: {jurisdiction_path}")
         return {"status": "error", "error": str(e)}

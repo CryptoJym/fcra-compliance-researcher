@@ -29,17 +29,19 @@
         <th>Status</th>
         <th>Started</th>
         <th>Completed</th>
+        <th>Duration</th>
         <th>Metrics</th>
         <th>Error</th>
       </tr>
     </thead>
     <tbody>
-    {% for r in runs %}
+    {% for r in rows %}
       <tr>
         <td>{{ r.jurisdiction_path }}</td>
         <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
         <td>{{ r.started_at }}</td>
         <td>{{ r.completed_at if r.completed_at else '' }}</td>
+        <td>{{ r.duration }}</td>
         <td><pre style="white-space: pre-wrap;">{{ r.metrics }}</pre></td>
         <td>{{ r.error if r.error else '' }}</td>
       </tr>

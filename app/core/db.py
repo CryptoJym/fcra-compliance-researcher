@@ -17,6 +17,7 @@ class JurisdictionRun(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     jurisdiction_path: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
+    trace_id: Mapped[str] = mapped_column(String, index=True, default="-")
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     metrics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
@@ -32,10 +33,10 @@ def init_db(database_url: str) -> None:
     Base.metadata.create_all(engine)
 
 
-def record_run(database_url: str, jurisdiction_path: str, status: str, metrics: Optional[dict] = None, error: Optional[str] = None) -> None:
+def record_run(database_url: str, jurisdiction_path: str, status: str, metrics: Optional[dict] = None, error: Optional[str] = None, trace_id: Optional[str] = None) -> None:
     engine = get_engine(database_url)
     with Session(engine) as session:
-        run = JurisdictionRun(jurisdiction_path=jurisdiction_path, status=status, metrics=metrics, error=error)
+        run = JurisdictionRun(jurisdiction_path=jurisdiction_path, status=status, metrics=metrics, error=error, trace_id=trace_id or "-")
         if status == "completed":
             run.completed_at = datetime.now(UTC)
         session.add(run)
