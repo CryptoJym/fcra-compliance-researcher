@@ -7,7 +7,10 @@ from typing import Dict, Tuple
 
 from .base import Agent
 from ..core.validation_rules import run_internal_checks
+<<<<<<< HEAD
+=======
 from ..core.cross_validation import confidence_metrics
+>>>>>>> origin/main
 
 
 class ValidationAgent(Agent):
@@ -39,6 +42,9 @@ class ValidationAgent(Agent):
             return success, details
         except FileNotFoundError:
             # If external tool not available, rely on internal checks
+<<<<<<< HEAD
+            return True, {"internal": details_internal, "warning": "External validator not found"}
+=======
             out = {"internal": details_internal, "warning": "External validator not found"}
             try:
                 patch_data = json.loads(patch_file.read_text())
@@ -46,5 +52,6 @@ class ValidationAgent(Agent):
             except Exception:
                 pass
             return True, out
+>>>>>>> origin/main
         except Exception as e:
             return False, {"error": str(e)}

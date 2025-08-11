@@ -12,6 +12,11 @@
     "inserted_at": "2025-08-11T22:00:24.628807+00:00",
     "status": "pending",
     "error": null
+<<<<<<< HEAD
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> origin/main
   },
   {
     "jurisdiction_path": "unified/city/a.json",
@@ -152,6 +157,9 @@
     "inserted_at": "2025-08-11T22:58:25.727445+00:00",
     "status": "pending",
     "error": null
+<<<<<<< HEAD
+>>>>>>> origin/main
+=======
   },
   {
     "jurisdiction_path": "unified/city/a.json",
@@ -320,5 +328,6 @@
     "inserted_at": "2025-08-11T23:23:17.422350+00:00",
     "status": "pending",
     "error": null
+>>>>>>> origin/main
   }
 ]

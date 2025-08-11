@@ -56,6 +56,22 @@ async def index(_: bool = Depends(require_basic_auth)):
                 "duration": duration_str,
             }
         )
+<<<<<<< HEAD
+<<<<<<< HEAD
+    template = TEMPLATES.get_template("index.html")
+    html = template.render(rows=rows)
+=======
+    # Basic counts and percent for metrics banner
+    counts = {"pending": 0, "in_progress": 0, "completed": 0, "error": 0}
+    for r in runs:
+        counts[r.status] = counts.get(r.status, 0) + 1
+    total = sum(counts.values())
+    percent = int((counts.get("completed", 0) / total) * 100) if total else 0
+
+    template = TEMPLATES.get_template("index.html")
+    html = template.render(rows=rows, counts=counts, percent=percent, status_filter="", type_filter="")
+>>>>>>> origin/main
+=======
     # Basic counts and percent for metrics banner
     counts = {"pending": 0, "in_progress": 0, "completed": 0, "error": 0}
     for r in runs:
@@ -90,4 +106,5 @@ async def review_queue(_: bool = Depends(require_basic_auth)):
         })
     template = TEMPLATES.get_template("review.html")
     html = template.render(rows=rows, status_filter="needs_review")
+>>>>>>> origin/main
     return HTMLResponse(html)
