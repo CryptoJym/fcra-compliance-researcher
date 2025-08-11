@@ -7,6 +7,10 @@ from typing import Dict, List, Optional
 
 import httpx
 from bs4 import BeautifulSoup
+from tenacity import retry, stop_after_attempt, wait_exponential
+from time import sleep
+
+from ..config.settings import settings
 
 from .base import Agent
 from ..config.settings import settings
@@ -30,15 +34,19 @@ class SourcingAgent(Agent):
         self.vector_store = vector_store
         self.logger = setup_logger("sourcing_agent")
 
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=6))
     def _fetch(self, url: str) -> Optional[str]:
         try:
+            # Simple rate limit
+            if settings.requests_per_second:
+                sleep(1.0 / max(1, settings.requests_per_second))
             resp = httpx.get(url, timeout=20)
             if resp.status_code == 200:
                 return resp.text
-            return None
+            raise RuntimeError(f"status={resp.status_code}")
         except Exception as e:
             self.logger.error(f"fetch error {url}: {e}")
-            return None
+            raise
 
     def _parse_html(self, html: str) -> str:
         soup = BeautifulSoup(html, "lxml")

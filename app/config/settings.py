@@ -29,5 +29,8 @@ class Settings(BaseSettings):
 
     dashboard_port: int = 8000
 
+    # Throttling
+    requests_per_second: int | None = 2
+
 
 settings = Settings()

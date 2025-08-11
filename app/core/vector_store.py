@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import List, Optional
+from filelock import FileLock
 
 try:
     from langchain_community.vectorstores import FAISS  # type: ignore
@@ -32,6 +33,7 @@ class VectorStore:
         self.index_path = Path(index_path)
         # Only use FAISS when the native library is available AND wrapper import exists
         self._use_faiss = bool(FAISS is not None and HAS_FAISS_NATIVE)
+        self._lock = FileLock(str(self.index_path) + ".lock")
         if api_key and OpenAIEmbeddings is not None:
             self.embeddings = OpenAIEmbeddings(
                 api_key=api_key if hasattr(OpenAIEmbeddings, "api_key") else api_key,  # type: ignore
@@ -50,26 +52,29 @@ class VectorStore:
             self._store = SimpleVectorStore()
             return
         # FAISS path
-        if self.index_path.exists():
-            self._store = FAISS.load_local(str(self.index_path), self.embeddings, allow_dangerous_deserialization=True)  # type: ignore
-        else:
-            self._store = FAISS.from_texts([""], self.embeddings)  # type: ignore
-            self.save()
+        with self._lock:
+            if self.index_path.exists():
+                self._store = FAISS.load_local(str(self.index_path), self.embeddings, allow_dangerous_deserialization=True)  # type: ignore
+            else:
+                self._store = FAISS.from_texts([""], self.embeddings)  # type: ignore
+                self.save()
 
     def save(self) -> None:
         if not self._use_faiss:
             return
         if self._store is None:
             return
-        self.index_path.parent.mkdir(parents=True, exist_ok=True)
-        self._store.save_local(str(self.index_path))  # type: ignore
+        with self._lock:
+            self.index_path.parent.mkdir(parents=True, exist_ok=True)
+            self._store.save_local(str(self.index_path))  # type: ignore
 
     def add_texts(self, texts: List[str], metadatas: Optional[List[dict]] = None) -> None:
         if self._store is None:
             self.load()
         assert self._store is not None
         if self._use_faiss:
-            self._store.add_texts(texts=texts, metadatas=metadatas)  # type: ignore
+            with self._lock:
+                self._store.add_texts(texts=texts, metadatas=metadatas)  # type: ignore
         else:
             self._store.add_texts(texts=texts, metadatas=metadatas)
         self.save()

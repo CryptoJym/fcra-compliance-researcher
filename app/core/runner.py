@@ -26,7 +26,7 @@ app = typer.Typer(add_completion=False)
 
 
 @app.command()
-def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queue_path: str | None = None):
+def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queue_path: str | None = None, use_celery: bool = False, skip_validation: bool = False, skip_merge: bool = False):
     logger = setup_logger("runner")
 
     init_db(settings.database_url)
@@ -37,12 +37,14 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
         queue_file.write_text("[]")
     task_manager = TaskManagerAgent(queue_file)
 
-    vector = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
-
-    sourcing = SourcingAgent(vector)
-    extraction = ExtractionAgent(vector)
-    validation = ValidationAgent()
-    merge = MergeAgent()
+    if use_celery:
+        from ..agents.tasks import process_jurisdiction  # Lazy import to avoid Celery overhead when not used
+    else:
+        vector = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+        sourcing = SourcingAgent(vector)
+        extraction = ExtractionAgent(vector)
+        validation = ValidationAgent()
+        merge = MergeAgent()
 
     cycles = 0
     while True:
@@ -61,40 +63,46 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
         record_run(settings.database_url, jurisdiction, status="in_progress")
 
         try:
-            # 1) Sourcing
-            queries = [
-                f"https://law.justia.com/codes/{jurisdiction}",
-            ]
-            sourcing.run(jurisdiction, queries)
+            if use_celery:
+                res = process_jurisdiction.delay(jurisdiction, skip_validation=skip_validation, skip_merge=skip_merge)
+                logger.info(f"Queued Celery task id={res.id} for {jurisdiction}")
+            else:
+                # 1) Sourcing
+                queries = [
+                    f"https://law.justia.com/codes/{jurisdiction}",
+                ]
+                sourcing.run(jurisdiction, queries)
 
-            # 2) Extraction
-            schema_skeleton = {"jurisdiction": jurisdiction}
-            patch = extraction.run(jurisdiction, schema_skeleton)
+                # 2) Extraction
+                schema_skeleton = {"jurisdiction": jurisdiction}
+                patch = extraction.run(jurisdiction, schema_skeleton)
 
-            # 3) Write patch temp file
-            patch_path = project_root() / "research_inputs" / f"{Path(jurisdiction).stem}.json"
-            patch_path.write_text(json.dumps(patch, indent=2))
+                # 3) Write patch temp file
+                patch_path = project_root() / "research_inputs" / f"{Path(jurisdiction).stem}.json"
+                patch_path.write_text(json.dumps(patch, indent=2))
 
-            # 4) Validation
-            jurisdiction_file = project_root() / jurisdiction
-            ok, details = validation.run(jurisdiction_file, patch_path)
-            if not ok:
-                logger.error(f"Validation failed for {jurisdiction}: {details}")
-                task_manager.mark_error(jurisdiction, "validation_failed")
-                record_run(settings.database_url, jurisdiction, status="error", metrics=details)
-                continue
+                # 4) Validation
+                jurisdiction_file = project_root() / jurisdiction
+                if not skip_validation:
+                    ok, details = validation.run(jurisdiction_file, patch_path)
+                    if not ok:
+                        logger.error(f"Validation failed for {jurisdiction}: {details}")
+                        task_manager.mark_error(jurisdiction, "validation_failed")
+                        record_run(settings.database_url, jurisdiction, status="error", metrics=details)
+                        continue
 
-            # 5) Merge
-            ok, details = merge.run(jurisdiction_file, patch_path)
-            if not ok:
-                logger.error(f"Merge failed for {jurisdiction}: {details}")
-                task_manager.mark_error(jurisdiction, "merge_failed")
-                record_run(settings.database_url, jurisdiction, status="error", metrics=details)
-                continue
+                # 5) Merge
+                if not skip_merge:
+                    ok, details = merge.run(jurisdiction_file, patch_path)
+                    if not ok:
+                        logger.error(f"Merge failed for {jurisdiction}: {details}")
+                        task_manager.mark_error(jurisdiction, "merge_failed")
+                        record_run(settings.database_url, jurisdiction, status="error", metrics=details)
+                        continue
 
-            task_manager.mark_completed(jurisdiction)
-            record_run(settings.database_url, jurisdiction, status="completed")
-            logger.info(f"Completed task: {jurisdiction}")
+                task_manager.mark_completed(jurisdiction)
+                record_run(settings.database_url, jurisdiction, status="completed")
+                logger.info(f"Completed task: {jurisdiction}")
         except Exception as e:
             logger.exception(f"Task failed: {jurisdiction}: {e}")
             task_manager.mark_error(jurisdiction, str(e))
