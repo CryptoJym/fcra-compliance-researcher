@@ -96,5 +96,19 @@
     "inserted_at": "2025-08-11T23:57:44.248727+00:00",
     "status": "pending",
     "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:58:45.835798+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:58:45.836084+00:00",
+    "status": "pending",
+    "error": null
   }
 ]
