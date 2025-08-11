@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from fastapi import FastAPI, Depends, Request
 from .api import router as api_router
+from .api_review import router as review_router
 from .auth import require_basic_auth
 from fastapi.responses import HTMLResponse
 from datetime import datetime
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 
 app = FastAPI()
 app.include_router(api_router)
+app.include_router(review_router)
 
 TEMPLATES = Environment(
     loader=FileSystemLoader(str(Path(__file__).resolve().parent / "templates")),
