@@ -52,6 +52,7 @@
       <tr>
         <th>Jurisdiction</th>
         <th>Status</th>
+        <th>Trace</th>
         <th>Started</th>
         <th>Completed</th>
         <th>Duration</th>
@@ -64,6 +65,11 @@
       <tr>
         <td>{{ r.jurisdiction_path }}</td>
         <td><span class="badge {{ r.status }}">{{ r.status }}</span></td>
+        <td>
+          {% if r.trace_id and r.trace_id != '-' %}
+            <a href="/api/logs/{{ r.trace_id }}" target="_blank">{{ r.trace_id }}</a>
+          {% else %}-{% endif %}
+        </td>
         <td>{{ r.started_at }}</td>
         <td>{{ r.completed_at if r.completed_at else '' }}</td>
         <td>{{ r.duration }}</td>

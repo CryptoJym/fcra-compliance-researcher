@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from .api import router as api_router
 from .auth import require_basic_auth
 from fastapi.responses import HTMLResponse
@@ -22,15 +22,19 @@ TEMPLATES = Environment(
 
 
 @app.get("/")
-async def index(_: bool = Depends(require_basic_auth)):
+async def index(request: Request, _: bool = Depends(require_basic_auth)):
     engine = get_engine(settings.database_url)
     with Session(engine) as session:
-        runs = (
-            session.query(JurisdictionRun)
-            .order_by(JurisdictionRun.started_at.desc())
-            .limit(200)
-            .all()
-        )
+        q = session.query(JurisdictionRun)
+        status_filter = request.query_params.get("status") or ""
+        type_filter = request.query_params.get("type") or ""
+        if status_filter:
+            q = q.filter(JurisdictionRun.status == status_filter)
+        if type_filter:
+            like_pat = f"/%/{type_filter}/%" if type_filter in ("state", "county", "city") else None
+            if like_pat:
+                q = q.filter(JurisdictionRun.jurisdiction_path.like(f"%/{type_filter}/%"))
+        runs = q.order_by(JurisdictionRun.started_at.desc()).limit(200).all()
     # Pre-compute display fields and duration strings for the template
     rows = []
     for r in runs:
@@ -51,8 +55,15 @@ async def index(_: bool = Depends(require_basic_auth)):
                 "metrics": r.metrics,
                 "error": r.error or "",
                 "duration": duration_str,
+                "trace_id": getattr(r, "trace_id", "-"),
             }
         )
+    counts = {"completed": 0, "in_progress": 0, "pending": 0, "error": 0}
+    for r in runs:
+        if r.status in counts:
+            counts[r.status] += 1
+    total = sum(counts.values()) or 1
+    percent = int(100 * counts["completed"] / total)
     template = TEMPLATES.get_template("index.html")
-    html = template.render(rows=rows)
+    html = template.render(rows=rows, counts=counts, percent=percent, status_filter=status_filter, type_filter=type_filter)
     return HTMLResponse(html)
