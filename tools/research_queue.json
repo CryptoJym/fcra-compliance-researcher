@@ -152,5 +152,33 @@
     "inserted_at": "2025-08-11T22:58:25.727445+00:00",
     "status": "pending",
     "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:15:19.317211+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:15:19.317499+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:15:59.084505+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:15:59.084834+00:00",
+    "status": "pending",
+    "error": null
   }
 ]
