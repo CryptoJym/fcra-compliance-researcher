@@ -32,5 +32,8 @@ class Settings(BaseSettings):
     # Throttling
     requests_per_second: int | None = 2
 
+    # Vector store retention (days). If set, purge documents older than N days based on metadata.ingested_at
+    vector_retention_days: int | None = None
+
 
 settings = Settings()

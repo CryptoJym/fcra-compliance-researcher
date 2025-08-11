@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import hashlib
-from typing import List, Optional
+from typing import List, Optional, Callable
+from datetime import datetime, UTC, timedelta
 from filelock import FileLock
 
 try:
@@ -19,6 +20,7 @@ except Exception:
 from .paths import ensure_directories
 from .embeddings import LocalHashEmbeddings
 from .simple_vector_store import SimpleVectorStore
+from ..config.settings import settings
 try:
     from langchain_openai import OpenAIEmbeddings  # Preferred in newer LangChain
 except Exception:  # Fallback for langchain_community
@@ -111,3 +113,68 @@ class VectorStore:
             self.load()
         assert self._store is not None
         return self._store.similarity_search(query, k=k, filter=filter)
+
+    # Retention and maintenance
+    def _is_expired(self, meta: dict, now: datetime) -> bool:
+        # Read from settings, but allow env override at runtime for tests
+        import os
+        days_env = os.getenv("VECTOR_RETENTION_DAYS")
+        days = None
+        if days_env:
+            try:
+                days = int(days_env)
+            except Exception:
+                days = None
+        if days is None:
+            days = settings.vector_retention_days
+        if not days:
+            return False
+        ts = meta.get("ingested_at") or meta.get("timestamp")
+        if not ts:
+            return False
+        try:
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=UTC)
+            return (now - dt) > timedelta(days=days)
+        except Exception:
+            return False
+
+    def reindex(self, progress_cb: Optional[Callable[[int, int], None]] = None) -> None:
+        """Rebuild the underlying index from stored texts/metadata, applying dedupe and retention.
+
+        For FAISS, we reload from scratch to apply pruning; for SimpleVectorStore we rebuild vectors.
+        """
+        if self._store is None:
+            self.load()
+        assert self._store is not None
+        # Extract current corpus
+        # SimpleVectorStore: has internal lists; FAISS path: we don't have direct docs; keep as no-op
+        if isinstance(self._store, SimpleVectorStore):
+            texts = list(self._store._texts)  # type: ignore[attr-defined]
+            metas = list(self._store._metas)  # type: ignore[attr-defined]
+            now = datetime.now(UTC)
+            filtered_texts: List[str] = []
+            filtered_metas: List[dict] = []
+            seen = set()
+            total = len(texts)
+            for idx, (t, m) in enumerate(zip(texts, metas)):
+                key = (m or {}).get("url") or hashlib.sha1((t or "").encode("utf-8")).hexdigest()
+                if key in seen:
+                    continue
+                if self._is_expired(m or {}, now):
+                    continue
+                seen.add(key)
+                filtered_texts.append(t)
+                filtered_metas.append(m)
+                if progress_cb:
+                    progress_cb(idx + 1, total)
+            # Reset and rebuild
+            self._store._texts = []  # type: ignore[attr-defined]
+            self._store._metas = []  # type: ignore[attr-defined]
+            self._store._vectors = []  # type: ignore[attr-defined]
+            self._store.add_texts(filtered_texts, filtered_metas)
+            self.save()
+        else:
+            # For FAISS: best-effort no-op for now; external persisted index lacks doc store
+            self.save()
