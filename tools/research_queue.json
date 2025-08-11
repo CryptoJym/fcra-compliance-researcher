@@ -40,5 +40,61 @@
     "inserted_at": "2025-08-11T23:52:05.492314+00:00",
     "status": "pending",
     "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:57:14.948037+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:57:14.948223+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:57:29.798033+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:57:29.798237+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:57:31.437909+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:57:31.438141+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T23:57:44.248494+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T23:57:44.248727+00:00",
+    "status": "pending",
+    "error": null
   }
 ]
