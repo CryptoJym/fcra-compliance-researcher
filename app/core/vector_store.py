@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
 from typing import List, Optional
 from filelock import FileLock
 
@@ -82,11 +83,27 @@ class VectorStore:
         if self._store is None:
             self.load()
         assert self._store is not None
+        # Deduplicate by URL or content hash when available
+        dedup_texts: List[str] = []
+        dedup_metas: List[dict] = []
+        metadatas = metadatas or [{} for _ in texts]
+        seen_keys = set()
+        for text, meta in zip(texts, metadatas):
+            url = (meta or {}).get("url")
+            key = url or hashlib.sha1(text.encode("utf-8")).hexdigest()
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            # Persist the dedupe key for later tooling
+            meta = dict(meta or {})
+            meta.setdefault("dedupe_key", key)
+            dedup_texts.append(text)
+            dedup_metas.append(meta)
         if self._use_faiss:
             with self._lock:
-                self._store.add_texts(texts=texts, metadatas=metadatas)  # type: ignore
+                self._store.add_texts(texts=dedup_texts, metadatas=dedup_metas)  # type: ignore
         else:
-            self._store.add_texts(texts=texts, metadatas=metadatas)
+            self._store.add_texts(texts=dedup_texts, metadatas=dedup_metas)
         self.save()
 
     def similarity_search(self, query: str, k: int = 5, filter: Optional[dict] = None):

@@ -1,10 +1,43 @@
 from __future__ import annotations
 
+import json
 import logging
+from logging import LogRecord
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any, Dict
+import contextvars
 
 from .paths import ensure_directories
+
+
+# Context variable for per-run trace ID
+TRACE_ID: contextvars.ContextVar[str] = contextvars.ContextVar("trace_id", default="-")
+
+
+def set_trace_id(trace_id: str) -> None:
+    TRACE_ID.set(trace_id)
+
+
+class TraceIdFilter(logging.Filter):
+    def filter(self, record: LogRecord) -> bool:  # noqa: A003 - name dictated by logging
+        try:
+            record.trace_id = TRACE_ID.get()
+        except Exception:
+            record.trace_id = "-"
+        return True
+
+
+class JSONFormatter(logging.Formatter):
+    def format(self, record: LogRecord) -> str:
+        payload: Dict[str, Any] = {
+            "time": self.formatTime(record, datefmt="%Y-%m-%dT%H:%M:%S%z"),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "trace_id": getattr(record, "trace_id", "-"),
+        }
+        return json.dumps(payload, ensure_ascii=False)
 
 
 def setup_logger(name: str, level: str = "INFO") -> logging.Logger:
@@ -12,18 +45,31 @@ def setup_logger(name: str, level: str = "INFO") -> logging.Logger:
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
 
-    if logger.handlers:
-        return logger
+    if not any(isinstance(h, RotatingFileHandler) for h in logger.handlers):
+        log_dir = Path("logs")
+        log_dir.mkdir(parents=True, exist_ok=True)
 
-    log_dir = Path("logs")
-    log_dir.mkdir(parents=True, exist_ok=True)
-    file_handler = RotatingFileHandler(log_dir / f"{name}.log", maxBytes=2_000_000, backupCount=5)
-    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-    file_handler.setFormatter(formatter)
+        # Human-readable file handler
+        text_file_handler = RotatingFileHandler(log_dir / f"{name}.log", maxBytes=2_000_000, backupCount=5)
+        text_formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | trace_id=%(trace_id)s | %(message)s")
+        text_file_handler.setFormatter(text_formatter)
 
-    stream_handler = logging.StreamHandler()
-    stream_handler.setFormatter(formatter)
+        # JSON file handler
+        json_file_handler = RotatingFileHandler(log_dir / f"{name}.jsonl", maxBytes=2_000_000, backupCount=5)
+        json_file_handler.setFormatter(JSONFormatter())
 
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+        # Stream handler (console)
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(text_formatter)
+
+        # Attach filter to inject trace_id
+        trace_filter = TraceIdFilter()
+        text_file_handler.addFilter(trace_filter)
+        json_file_handler.addFilter(trace_filter)
+        stream_handler.addFilter(trace_filter)
+
+        logger.addHandler(text_file_handler)
+        logger.addHandler(json_file_handler)
+        logger.addHandler(stream_handler)
+
     return logger

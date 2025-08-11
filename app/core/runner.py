@@ -14,7 +14,7 @@ from ..core.db import init_db, record_run
 from ..core.paths import project_root
 from ..core.vector_store import VectorStore
 from ..core.queue import ResearchQueue
-from ..core.logger import setup_logger
+from ..core.logger import setup_logger, set_trace_id
 from ..agents.task_manager import TaskManagerAgent
 from ..agents.sourcing_agent import SourcingAgent
 from ..agents.extraction_agent import ExtractionAgent
@@ -60,13 +60,18 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
             continue
 
         jurisdiction = task.jurisdiction_path
-        logger.info(f"Starting task: {jurisdiction}")
-        record_run(settings.database_url, jurisdiction, status="in_progress")
+        # Generate a trace ID for this run
+        trace_id = f"run-{int(time.time()*1000)}-{jurisdiction.replace('/', '_')}"
+        set_trace_id(trace_id)
+        logger.info(f"Starting task: {jurisdiction} | trace_id={trace_id}")
+        record_run(settings.database_url, jurisdiction, status="in_progress", trace_id=trace_id)
 
         try:
             if use_celery:
-                res = process_jurisdiction.delay(jurisdiction, skip_validation=skip_validation, skip_merge=skip_merge)
-                logger.info(f"Queued Celery task id={res.id} for {jurisdiction}")
+                res = process_jurisdiction.delay(jurisdiction, skip_validation=skip_validation, skip_merge=skip_merge, trace_id=trace_id)
+                logger.info(f"Queued Celery task id={res.id} for {jurisdiction} | trace_id={trace_id}")
+                from ..core.notifications import notify_slack
+                notify_slack(f"Queued task: {jurisdiction} (id={res.id})")
             else:
                 # 1) Sourcing
                 queries = [
@@ -89,7 +94,7 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                     if not ok:
                         logger.error(f"Validation failed for {jurisdiction}: {details}")
                         task_manager.mark_error(jurisdiction, "validation_failed")
-                        record_run(settings.database_url, jurisdiction, status="error", metrics=details)
+                        record_run(settings.database_url, jurisdiction, status="error", metrics=details, trace_id=trace_id)
                         continue
 
                 # 5) Merge
@@ -98,16 +103,16 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                     if not ok:
                         logger.error(f"Merge failed for {jurisdiction}: {details}")
                         task_manager.mark_error(jurisdiction, "merge_failed")
-                        record_run(settings.database_url, jurisdiction, status="error", metrics=details)
+                        record_run(settings.database_url, jurisdiction, status="error", metrics=details, trace_id=trace_id)
                         continue
 
                 task_manager.mark_completed(jurisdiction)
-                record_run(settings.database_url, jurisdiction, status="completed")
-                logger.info(f"Completed task: {jurisdiction}")
+                record_run(settings.database_url, jurisdiction, status="completed", trace_id=trace_id)
+                logger.info(f"Completed task: {jurisdiction} | trace_id={trace_id}")
         except Exception as e:
             logger.exception(f"Task failed: {jurisdiction}: {e}")
             task_manager.mark_error(jurisdiction, str(e))
-            record_run(settings.database_url, jurisdiction, status="error", metrics={"error": str(e)})
+            record_run(settings.database_url, jurisdiction, status="error", metrics={"error": str(e)}, trace_id=trace_id)
 
 
 if __name__ == "__main__":
