@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request
 from .api import router as api_router
 from .auth import require_basic_auth
 from fastapi.responses import HTMLResponse
@@ -25,15 +25,17 @@ TEMPLATES = Environment(
 
 
 @app.get("/")
-async def index(_: bool = Depends(require_basic_auth)):
+async def index(request: Request, _: bool = Depends(require_basic_auth)):
     engine = get_engine(settings.database_url)
     with Session(engine) as session:
-        runs = (
-            session.query(JurisdictionRun)
-            .order_by(JurisdictionRun.started_at.desc())
-            .limit(200)
-            .all()
-        )
+        q = session.query(JurisdictionRun)
+        status_filter = request.query_params.get("status") or ""
+        type_filter = request.query_params.get("type") or ""
+        if status_filter:
+            q = q.filter(JurisdictionRun.status == status_filter)
+        if type_filter:
+            q = q.filter(JurisdictionRun.jurisdiction_path.contains(f"/{type_filter}/"))
+        runs = q.order_by(JurisdictionRun.started_at.desc()).limit(200).all()
     # Pre-compute display fields and duration strings for the template
     rows = []
     for r in runs:
@@ -45,22 +47,15 @@ async def index(_: bool = Depends(require_basic_auth)):
         if isinstance(r.started_at, datetime) and isinstance(r.completed_at, datetime) and r.completed_at:
             duration_seconds = (r.completed_at - r.started_at).total_seconds()
             duration_str = f"{duration_seconds:.1f}s"
-        rows.append(
-            {
-                "jurisdiction_path": r.jurisdiction_path,
-                "status": r.status,
-                "started_at": started_at_str,
-                "completed_at": completed_at_str,
-                "metrics": r.metrics,
-                "error": r.error or "",
-                "duration": duration_str,
-            }
-        )
-<<<<<<< HEAD
-<<<<<<< HEAD
-    template = TEMPLATES.get_template("index.html")
-    html = template.render(rows=rows)
-=======
+        rows.append({
+            "jurisdiction_path": r.jurisdiction_path,
+            "status": r.status,
+            "started_at": started_at_str,
+            "completed_at": completed_at_str,
+            "metrics": r.metrics,
+            "error": r.error or "",
+            "duration": duration_str,
+        })
     # Basic counts and percent for metrics banner
     counts = {"pending": 0, "in_progress": 0, "completed": 0, "error": 0}
     for r in runs:
@@ -69,18 +64,7 @@ async def index(_: bool = Depends(require_basic_auth)):
     percent = int((counts.get("completed", 0) / total) * 100) if total else 0
 
     template = TEMPLATES.get_template("index.html")
-    html = template.render(rows=rows, counts=counts, percent=percent, status_filter="", type_filter="")
->>>>>>> origin/main
-=======
-    # Basic counts and percent for metrics banner
-    counts = {"pending": 0, "in_progress": 0, "completed": 0, "error": 0}
-    for r in runs:
-        counts[r.status] = counts.get(r.status, 0) + 1
-    total = sum(counts.values())
-    percent = int((counts.get("completed", 0) / total) * 100) if total else 0
-
-    template = TEMPLATES.get_template("index.html")
-    html = template.render(rows=rows, counts=counts, percent=percent, status_filter="", type_filter="")
+    html = template.render(rows=rows, counts=counts, percent=percent, status_filter=status_filter, type_filter=type_filter)
     return HTMLResponse(html)
 
 
@@ -106,5 +90,4 @@ async def review_queue(_: bool = Depends(require_basic_auth)):
         })
     template = TEMPLATES.get_template("review.html")
     html = template.render(rows=rows, status_filter="needs_review")
->>>>>>> origin/main
     return HTMLResponse(html)
