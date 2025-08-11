@@ -40,15 +40,16 @@ class VectorStore:
             module_name = getattr(OpenAIEmbeddings, "__module__", "")
             if module_name.startswith("langchain_openai"):
                 # Newer package
-                if api_key:
+                # Newer package expects only api_key/base_url when provided
+                if api_key is not None:
                     kwargs["api_key"] = api_key
-                if base_url:
+                if base_url is not None:
                     kwargs["base_url"] = base_url
             else:
                 # Older community wrapper
-                if api_key:
+                if api_key is not None:
                     kwargs["openai_api_key"] = api_key
-                if base_url:
+                if base_url is not None:
                     kwargs["openai_api_base"] = base_url
             self.embeddings = OpenAIEmbeddings(**kwargs)  # type: ignore
         else:
