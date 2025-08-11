@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 
 from app.core.queue import ResearchQueue
@@ -22,8 +22,8 @@ def test_priority_by_gaps(tmp_path: Path):
 
     q = ResearchQueue(qpath)
     q.load()
-    q.add_task(ResearchTask("unified/low.json", priority=1, inserted_at=datetime.utcnow()))
-    q.add_task(ResearchTask("unified/high.json", priority=1, inserted_at=datetime.utcnow()))
+    q.add_task(ResearchTask("unified/low.json", priority=1, inserted_at=datetime.now(UTC)))
+    q.add_task(ResearchTask("unified/high.json", priority=1, inserted_at=datetime.now(UTC)))
 
     # high is missing last_updated so should come first
     t = q.next_task(base_dir=base)

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from app.core.queue import ResearchQueue
 from app.core.types import ResearchTask
-from datetime import datetime
+from datetime import datetime, UTC
 
 
 def test_queue_roundtrip(tmp_path: Path):
@@ -13,8 +13,8 @@ def test_queue_roundtrip(tmp_path: Path):
     queue.load()
     assert queue.tasks == []
 
-    queue.add_task(ResearchTask("unified/state/ca.json", 5, datetime.utcnow()))
-    queue.add_task(ResearchTask("unified/city/sf.json", 2, datetime.utcnow()))
+    queue.add_task(ResearchTask("unified/state/ca.json", 5, datetime.now(UTC)))
+    queue.add_task(ResearchTask("unified/city/sf.json", 2, datetime.now(UTC)))
 
     queue.sort_by_priority()
     t = queue.next_task()
