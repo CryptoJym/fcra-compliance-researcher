@@ -152,5 +152,19 @@
     "inserted_at": "2025-08-11T22:58:25.727445+00:00",
     "status": "pending",
     "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/a.json",
+    "priority": 3,
+    "inserted_at": "2025-08-11T22:59:19.118322+00:00",
+    "status": "pending",
+    "error": null
+  },
+  {
+    "jurisdiction_path": "unified/city/b.json",
+    "priority": 0,
+    "inserted_at": "2025-08-11T22:59:19.118598+00:00",
+    "status": "pending",
+    "error": null
   }
 ]
