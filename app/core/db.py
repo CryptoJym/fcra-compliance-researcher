@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Optional
 
 from sqlalchemy import JSON, Column, DateTime, Integer, String, create_engine
@@ -17,8 +17,8 @@ class JurisdictionRun(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     jurisdiction_path: Mapped[str] = mapped_column(String, index=True)
     status: Mapped[str] = mapped_column(String, default="pending")
-    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     metrics: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
     error: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
@@ -37,6 +37,6 @@ def record_run(database_url: str, jurisdiction_path: str, status: str, metrics: 
     with Session(engine) as session:
         run = JurisdictionRun(jurisdiction_path=jurisdiction_path, status=status, metrics=metrics, error=error)
         if status == "completed":
-            run.completed_at = datetime.utcnow()
+            run.completed_at = datetime.now(UTC)
         session.add(run)
         session.commit()

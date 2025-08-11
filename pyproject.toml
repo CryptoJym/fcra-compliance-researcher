@@ -12,6 +12,7 @@ requires-python = ">=3.10"
 dependencies = [
   "langchain>=0.2.12",
   "langchain-community>=0.2.10",
+  "langchain-openai>=0.1.0",
   "tiktoken>=0.7.0",
   "fastapi>=0.111.0",
   "uvicorn>=0.30.0",

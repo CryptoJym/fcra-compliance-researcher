@@ -7,7 +7,7 @@ from pathlib import Path
 from ..core.queue import ResearchQueue
 from ..core.types import ResearchTask
 from ..core.paths import project_root
-from datetime import datetime
+from datetime import datetime, UTC
 
 router = APIRouter(prefix="/api")
 
@@ -23,5 +23,11 @@ async def enqueue(req: EnqueueRequest):
     queue = ResearchQueue(qpath)
     queue.load()
     priority = req.priority if req.priority is not None else 0
-    queue.add_task(ResearchTask(jurisdiction_path=req.jurisdiction_path, priority=priority, inserted_at=datetime.utcnow()))
+    queue.add_task(
+        ResearchTask(
+            jurisdiction_path=req.jurisdiction_path,
+            priority=priority,
+            inserted_at=datetime.now(UTC),
+        )
+    )
     return {"status": "queued", "jurisdiction_path": req.jurisdiction_path, "priority": priority}
