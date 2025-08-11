@@ -36,6 +36,7 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
     if not queue_file.exists():
         queue_file.write_text("[]")
     task_manager = TaskManagerAgent(queue_file)
+    base_dir = project_root()
 
     if use_celery:
         from ..agents.tasks import process_jurisdiction  # Lazy import to avoid Celery overhead when not used
@@ -52,7 +53,7 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
             logger.info("Reached max cycles. Exiting.")
             break
         cycles += 1
-        task = task_manager.next()
+        task = task_manager.next(base_dir=base_dir)
         if task is None:
             logger.info("No pending tasks. Sleeping...")
             time.sleep(idle_sleep)

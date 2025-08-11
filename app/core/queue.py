@@ -5,20 +5,24 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
+from filelock import FileLock
 
 from .types import ResearchTask
+from .gaps import estimate_gaps
 
 
 class ResearchQueue:
     def __init__(self, queue_file: Path):
         self.queue_file = queue_file
+        self._lock = FileLock(str(queue_file) + ".lock")
         self.tasks: List[ResearchTask] = []
 
     def load(self) -> None:
         if not self.queue_file.exists():
             self.tasks = []
             return
-        data = json.loads(self.queue_file.read_text())
+        with self._lock:
+            data = json.loads(self.queue_file.read_text())
         self.tasks = [
             ResearchTask(
                 jurisdiction_path=item["jurisdiction_path"],
@@ -34,18 +38,28 @@ class ResearchQueue:
         serialized = [
             {**asdict(t), "inserted_at": t.inserted_at.isoformat()} for t in self.tasks
         ]
-        self.queue_file.write_text(json.dumps(serialized, indent=2))
+        with self._lock:
+            self.queue_file.write_text(json.dumps(serialized, indent=2))
 
     def add_task(self, task: ResearchTask) -> None:
         self.tasks.append(task)
         self.save()
 
-    def sort_by_priority(self) -> None:
-        self.tasks.sort(key=lambda t: (-t.priority, t.inserted_at))
+    def sort_by_priority(self, base_dir: Path | None = None) -> None:
+        # Sort by dynamic score using gaps without mutating stored priority
+        def gaps_for(t: ResearchTask) -> int:
+            if not base_dir:
+                return 0
+            try:
+                return estimate_gaps(base_dir, t.jurisdiction_path)
+            except Exception:
+                return 0
+        # Key order: higher of (explicit priority vs gaps), then gaps, then earlier insert
+        self.tasks.sort(key=lambda t: (-(max(t.priority, gaps_for(t))), -gaps_for(t), t.inserted_at))
         self.save()
 
-    def next_task(self) -> Optional[ResearchTask]:
-        self.sort_by_priority()
+    def next_task(self, base_dir: Path | None = None) -> Optional[ResearchTask]:
+        self.sort_by_priority(base_dir=base_dir)
         for task in self.tasks:
             if task.status == "pending":
                 task.status = "in_progress"
