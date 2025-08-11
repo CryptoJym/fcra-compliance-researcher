@@ -1,0 +1,17 @@
+version: '3.9'
+services:
+  dashboard:
+    build: .
+    command: uvicorn app.dashboard.server:app --host 0.0.0.0 --port 8000
+    environment:
+      - DATABASE_URL=sqlite:///./researcher.db
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
