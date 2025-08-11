@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
 from langchain.prompts import ChatPromptTemplate
@@ -74,7 +74,7 @@ class ExtractionAgent(Agent):
         if self.llm is None:
             # Offline mode: return skeleton only
             data = dict(schema_skeleton)
-            data["last_updated"] = datetime.utcnow().date().isoformat()
+            data["last_updated"] = datetime.now(UTC).date().isoformat()
             return data
 
         response = self.llm.invoke(message)
@@ -82,5 +82,5 @@ class ExtractionAgent(Agent):
             data = json.loads(response.content)
         except Exception:
             data = dict(schema_skeleton)
-        data["last_updated"] = datetime.utcnow().date().isoformat()
+        data["last_updated"] = datetime.now(UTC).date().isoformat()
         return data

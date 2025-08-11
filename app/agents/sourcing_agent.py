@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, UTC
 from typing import Dict, List, Optional
 
 import httpx
@@ -58,7 +58,7 @@ class SourcingAgent(Agent):
             "title": doc.title,
             "published_at": doc.published_at,
             "jurisdiction_tags": doc.jurisdiction_tags,
-            "ingested_at": datetime.utcnow().isoformat(),
+            "ingested_at": datetime.now(UTC).isoformat(),
         }
 
     def add_to_vector(self, docs: List[SourceDocument]) -> None:

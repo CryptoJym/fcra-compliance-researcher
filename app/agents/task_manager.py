@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, UTC
 
 from .base import Agent
 from ..core.queue import ResearchQueue
@@ -20,7 +20,11 @@ class TaskManagerAgent(Agent):
         self.logger = setup_logger("task_manager")
 
     def insert_task(self, jurisdiction_path: str, priority: int = 0) -> None:
-        task = ResearchTask(jurisdiction_path=jurisdiction_path, priority=priority, inserted_at=datetime.utcnow())
+        task = ResearchTask(
+            jurisdiction_path=jurisdiction_path,
+            priority=priority,
+            inserted_at=datetime.now(UTC),
+        )
         self.queue.add_task(task)
 
     def next(self, base_dir: Path | None = None) -> Optional[ResearchTask]:

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 from .base import Agent
+from ..core.github_service import create_branch_and_commit_and_pr
 
 
 class MergeAgent(Agent):
@@ -21,6 +22,10 @@ class MergeAgent(Agent):
                 "stdout": proc.stdout,
                 "stderr": proc.stderr,
             }
+            if success:
+                # Attempt to open a PR with the updated file
+                pr = create_branch_and_commit_and_pr(jurisdiction_file, pr_title=f"Update {jurisdiction_file}", pr_body=f"Automated patch applied for {jurisdiction_file}")
+                details["pr_url"] = pr.pr_url
             return success, details
         except Exception as e:
             return False, {"error": str(e)}

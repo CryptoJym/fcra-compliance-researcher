@@ -35,13 +35,23 @@ class VectorStore:
         self._use_faiss = bool(FAISS is not None and HAS_FAISS_NATIVE)
         self._lock = FileLock(str(self.index_path) + ".lock")
         if api_key and OpenAIEmbeddings is not None:
-            self.embeddings = OpenAIEmbeddings(
-                api_key=api_key if hasattr(OpenAIEmbeddings, "api_key") else api_key,  # type: ignore
-                openai_api_key=api_key if hasattr(OpenAIEmbeddings, "openai_api_key") else None,  # type: ignore
-                model="text-embedding-3-large",
-                base_url=base_url if hasattr(OpenAIEmbeddings, "base_url") else None,  # type: ignore
-                openai_api_base=base_url if hasattr(OpenAIEmbeddings, "openai_api_base") else None,  # type: ignore
-            )
+            # Build kwargs compatible with the installed embeddings package
+            kwargs: dict = {"model": "text-embedding-3-large"}
+            module_name = getattr(OpenAIEmbeddings, "__module__", "")
+            if module_name.startswith("langchain_openai"):
+                # Newer package
+                # Newer package expects only api_key/base_url when provided
+                if api_key is not None:
+                    kwargs["api_key"] = api_key
+                if base_url is not None:
+                    kwargs["base_url"] = base_url
+            else:
+                # Older community wrapper
+                if api_key is not None:
+                    kwargs["openai_api_key"] = api_key
+                if base_url is not None:
+                    kwargs["openai_api_base"] = base_url
+            self.embeddings = OpenAIEmbeddings(**kwargs)  # type: ignore
         else:
             # Offline deterministic embeddings for tests/dev
             self.embeddings = LocalHashEmbeddings()

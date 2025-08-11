@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 from .embeddings import LocalHashEmbeddings
 
@@ -18,6 +18,17 @@ class SimpleVectorStore:
         self._metas.extend(metadatas)
         self._vectors.extend(self.embeddings.embed_documents(texts))
 
+    def _metadata_matches(self, metadata: Dict[str, Any], filter: Dict[str, Any]) -> bool:
+        for key, val in filter.items():
+            meta_val = metadata.get(key)
+            if isinstance(meta_val, list):
+                if val not in meta_val:
+                    return False
+            else:
+                if meta_val != val:
+                    return False
+        return True
+
     def similarity_search(self, query: str, k: int = 5, filter: Optional[dict] = None):
         qvec = self.embeddings.embed_query(query)
         scored = []
@@ -25,14 +36,8 @@ class SimpleVectorStore:
             # cosine (dot because normalized)
             score = sum(a * b for a, b in zip(qvec, vec))
             meta = self._metas[idx]
-            if filter:
-                ok = True
-                for key, val in filter.items():
-                    if meta.get(key) != val:
-                        ok = False
-                        break
-                if not ok:
-                    continue
+            if filter and not self._metadata_matches(meta, filter):
+                continue
             scored.append((score, idx))
         scored.sort(reverse=True)
         results = []

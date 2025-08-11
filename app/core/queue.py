@@ -2,13 +2,18 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from datetime import datetime
+from datetime import datetime, UTC
 from pathlib import Path
 from typing import List, Optional
 from filelock import FileLock
 
 from .types import ResearchTask
 from .gaps import estimate_gaps
+
+
+def _normalize_dt(dt: datetime) -> datetime:
+    """Ensure datetime is timezone-aware in UTC."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=UTC)
 
 
 class ResearchQueue:
@@ -23,16 +28,23 @@ class ResearchQueue:
             return
         with self._lock:
             data = json.loads(self.queue_file.read_text())
-        self.tasks = [
-            ResearchTask(
-                jurisdiction_path=item["jurisdiction_path"],
-                priority=item.get("priority", 0),
-                inserted_at=datetime.fromisoformat(item.get("inserted_at") if item.get("inserted_at") else datetime.utcnow().isoformat()),
-                status=item.get("status", "pending"),
-                error=item.get("error"),
+        tasks: List[ResearchTask] = []
+        for item in data:
+            inserted_str = item.get("inserted_at")
+            if inserted_str:
+                dt = datetime.fromisoformat(inserted_str)
+            else:
+                dt = datetime.now(UTC)
+            tasks.append(
+                ResearchTask(
+                    jurisdiction_path=item["jurisdiction_path"],
+                    priority=item.get("priority", 0),
+                    inserted_at=_normalize_dt(dt),
+                    status=item.get("status", "pending"),
+                    error=item.get("error"),
+                )
             )
-            for item in data
-        ]
+        self.tasks = tasks
 
     def save(self) -> None:
         serialized = [
@@ -42,6 +54,8 @@ class ResearchQueue:
             self.queue_file.write_text(json.dumps(serialized, indent=2))
 
     def add_task(self, task: ResearchTask) -> None:
+        # Normalize inserted_at to be timezone-aware UTC to avoid naive/aware comparison issues
+        task.inserted_at = _normalize_dt(task.inserted_at)
         self.tasks.append(task)
         self.save()
 
