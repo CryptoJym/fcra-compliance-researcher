@@ -9,7 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 
 from ..config.settings import settings
 from ..core.paths import project_root
-from ..core.logger import setup_logger
+from ..core.logger import setup_logger, set_trace_id
 from ..core.vector_store import VectorStore
 from ..core.db import record_run
 from .sourcing_agent import SourcingAgent
@@ -40,11 +40,21 @@ def _push_dlq_safe(payload: dict) -> None:
 
 
 @shared_task(name="app.agents.tasks.process_jurisdiction", autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=8), reraise=True)
-def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, skip_merge: bool = False) -> dict:
+@retry(
+    stop=stop_after_attempt(getattr(settings, "retry_max_attempts", 3)),
+    wait=wait_exponential(
+        multiplier=getattr(settings, "retry_min_seconds", 0.5),
+        min=getattr(settings, "retry_min_seconds", 0.5),
+        max=getattr(settings, "retry_max_seconds", 8.0),
+    ),
+    reraise=True,
+)
+def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, skip_merge: bool = False, trace_id: Optional[str] = None) -> dict:
+    if trace_id:
+        set_trace_id(trace_id)
     logger.info(f"Processing task via Celery: {jurisdiction_path}")
 
-    record_run(settings.database_url, jurisdiction_path, status="in_progress")
+    record_run(settings.database_url, jurisdiction_path, status="in_progress", trace_id=trace_id)
     _notify_slack_safe(f"Started: {jurisdiction_path}")
 
     vector = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
@@ -71,7 +81,7 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
         if not skip_validation:
             ok, details = validation.run(jurisdiction_file, patch_path)
             if not ok:
-                record_run(settings.database_url, jurisdiction_path, status="error", metrics=details)
+                record_run(settings.database_url, jurisdiction_path, status="error", metrics=details, trace_id=trace_id)
                 _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "validation", "details": details})
                 _notify_slack_safe(f"Validation failed: {jurisdiction_path}")
                 return {"status": "validation_failed", "details": details}
@@ -80,17 +90,17 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
         if not skip_merge:
             ok, details = merge.run(jurisdiction_file, patch_path)
             if not ok:
-                record_run(settings.database_url, jurisdiction_path, status="error", metrics=details)
+                record_run(settings.database_url, jurisdiction_path, status="error", metrics=details, trace_id=trace_id)
                 _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "merge", "details": details})
                 _notify_slack_safe(f"Merge failed: {jurisdiction_path}")
                 return {"status": "merge_failed", "details": details}
 
-        record_run(settings.database_url, jurisdiction_path, status="completed")
+        record_run(settings.database_url, jurisdiction_path, status="completed", trace_id=trace_id)
         _notify_slack_safe(f"Completed: {jurisdiction_path}")
         return {"status": "completed", "jurisdiction": jurisdiction_path}
     except Exception as e:
         logger.exception(f"Celery task failed: {jurisdiction_path}: {e}")
-        record_run(settings.database_url, jurisdiction_path, status="error", metrics={"error": str(e)})
+        record_run(settings.database_url, jurisdiction_path, status="error", metrics={"error": str(e)}, trace_id=trace_id)
         _push_dlq_safe({"jurisdiction": jurisdiction_path, "stage": "task", "error": str(e)})
         _notify_slack_safe(f"Error: {jurisdiction_path}")
         return {"status": "error", "error": str(e)}

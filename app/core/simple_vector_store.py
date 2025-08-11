@@ -14,9 +14,20 @@ class SimpleVectorStore:
 
     def add_texts(self, texts: List[str], metadatas: Optional[List[dict]] = None) -> None:
         metadatas = metadatas or [{} for _ in texts]
-        self._texts.extend(texts)
-        self._metas.extend(metadatas)
-        self._vectors.extend(self.embeddings.embed_documents(texts))
+        # Dedupe by URL if provided, else by content hash surrogate
+        seen_keys = set()
+        new_texts: List[str] = []
+        new_metas: List[dict] = []
+        for text, meta in zip(texts, metadatas):
+            key = meta.get("url") or f"content::{hash(text)}"
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            new_texts.append(text)
+            new_metas.append(meta)
+        self._texts.extend(new_texts)
+        self._metas.extend(new_metas)
+        self._vectors.extend(self.embeddings.embed_documents(new_texts))
 
     def _metadata_matches(self, metadata: Dict[str, Any], filter: Dict[str, Any]) -> bool:
         for key, val in filter.items():

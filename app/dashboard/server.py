@@ -53,6 +53,13 @@ async def index(_: bool = Depends(require_basic_auth)):
                 "duration": duration_str,
             }
         )
+    # Basic counts and percent for metrics banner
+    counts = {"pending": 0, "in_progress": 0, "completed": 0, "error": 0}
+    for r in runs:
+        counts[r.status] = counts.get(r.status, 0) + 1
+    total = sum(counts.values())
+    percent = int((counts.get("completed", 0) / total) * 100) if total else 0
+
     template = TEMPLATES.get_template("index.html")
-    html = template.render(rows=rows)
+    html = template.render(rows=rows, counts=counts, percent=percent, status_filter="", type_filter="")
     return HTMLResponse(html)

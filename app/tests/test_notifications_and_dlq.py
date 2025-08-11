@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from app.core.notifications import notify_slack
-from app.core.dlq import push_to_dlq, DLQ_FILE
+from app.core.dlq import push_to_dlq
 
 
 def test_notify_slack_disabled(monkeypatch):
