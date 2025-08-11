@@ -17,8 +17,7 @@ docker compose up -d
 docker compose logs -f --tail=200
 
 # Health checks
-curl -fsS http://localhost:8000/healthz
-curl -fsS http://localhost:8000/readyz
+curl -fsS http://localhost:8000/openapi.json > /dev/null && echo OK
 ```
 
 Environment variables
