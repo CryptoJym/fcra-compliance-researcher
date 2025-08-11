@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from fastapi import FastAPI
+from .api import router as api_router
 from fastapi.responses import HTMLResponse
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -10,6 +11,7 @@ from ..core.db import get_engine, JurisdictionRun
 from sqlalchemy.orm import Session
 
 app = FastAPI()
+app.include_router(api_router)
 
 TEMPLATES = Environment(
     loader=FileSystemLoader(str(Path(__file__).resolve().parent / "templates")),

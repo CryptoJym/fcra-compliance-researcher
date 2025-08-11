@@ -23,8 +23,8 @@ class TaskManagerAgent(Agent):
         task = ResearchTask(jurisdiction_path=jurisdiction_path, priority=priority, inserted_at=datetime.utcnow())
         self.queue.add_task(task)
 
-    def next(self) -> Optional[ResearchTask]:
-        return self.queue.next_task()
+    def next(self, base_dir: Path | None = None) -> Optional[ResearchTask]:
+        return self.queue.next_task(base_dir=base_dir)
 
     def mark_completed(self, jurisdiction_path: str) -> None:
         self.queue.mark_completed(jurisdiction_path)
