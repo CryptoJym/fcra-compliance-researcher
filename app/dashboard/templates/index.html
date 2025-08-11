@@ -22,6 +22,31 @@
 </head>
 <body>
   <h1>FCRA Researcher - Recent Runs</h1>
+  <div style="margin:12px 0; display:flex; gap:12px; align-items:center;">
+    <form method="get" action="/">
+      <label>Status
+        <select name="status">
+          <option value="">All</option>
+          <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>Pending</option>
+          <option value="in_progress" {% if status_filter=='in_progress' %}selected{% endif %}>In Progress</option>
+          <option value="completed" {% if status_filter=='completed' %}selected{% endif %}>Completed</option>
+          <option value="error" {% if status_filter=='error' %}selected{% endif %}>Error</option>
+        </select>
+      </label>
+      <label>Type
+        <select name="type">
+          <option value="">All</option>
+          <option value="state" {% if type_filter=='state' %}selected{% endif %}>State</option>
+          <option value="county" {% if type_filter=='county' %}selected{% endif %}>County</option>
+          <option value="city" {% if type_filter=='city' %}selected{% endif %}>City</option>
+        </select>
+      </label>
+      <button type="submit">Apply</button>
+    </form>
+    <div style="margin-left:auto;">
+      <strong>Completed:</strong> {{ counts.completed or 0 }} / {{ counts.completed + counts.in_progress + counts.pending + counts.error }} ({{ percent }}%)
+    </div>
+  </div>
   <table>
     <thead>
       <tr>
