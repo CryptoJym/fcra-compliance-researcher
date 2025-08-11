@@ -15,3 +15,15 @@ services:
     image: redis:7
     ports:
       - "6379:6379"
+
+  worker:
+    build: .
+    command: bash -lc "celery -A app.core.celery_app.celery_app worker -l info -Q research -c 2"
+    environment:
+      - DATABASE_URL=sqlite:///./researcher.db
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    depends_on:
+      - redis
