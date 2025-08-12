@@ -43,6 +43,7 @@ class Settings(BaseSettings):
     openai_api_key: str | None = None
     openai_base_url: str | None = None
     openai_model: str = "gpt-oss-128b"
+    enable_live_llm: bool = False
 
     dashboard_port: int = 8000
 
