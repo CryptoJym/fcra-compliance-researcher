@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from logging import LogRecord
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -38,6 +39,16 @@ class JSONFormatter(logging.Formatter):
             "trace_id": getattr(record, "trace_id", "-"),
         }
         return json.dumps(payload, ensure_ascii=False)
+
+
+_REDACT_KEYS = re.compile(r"(api_key|token|secret|password)", re.IGNORECASE)
+
+
+def redact_secrets(message: str) -> str:
+    try:
+        return re.sub(r"(api_key|token|secret|password)=[^\s]+", r"\1=***", message, flags=re.IGNORECASE)
+    except Exception:
+        return message
 
 
 def setup_logger(name: str, level: str = "INFO") -> logging.Logger:
