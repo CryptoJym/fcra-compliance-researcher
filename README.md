@@ -63,13 +63,15 @@ Progress tracker
   - [ ] GitHub PR automation (branch/commit/PR) with CI
   - [ ] Dashboard metrics, filters, auth
   - [ ] Notifications (Slack/email)
- - [ ] Docker-compose for all services + production hardening
+- [ ] Docker-compose for all services + production hardening
+  - [x] Base compose with dashboard, worker, redis
+  - [ ] Add env profiles (staging/prod) and healthchecks
+  - [ ] Harden container users and resource limits
 
 Deployment
 - Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
-- Staging: `docker compose -f docker-compose.yml -f deploy/docker-compose.staging.yml up -d` (adds environment via `env/staging.env`).
-- Production: `docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d` (adds resource limits and restart policies via `env/prod.env`).
-- See `DEPLOYMENT.md` and `deploy/README-deploy.md` for details.
+- Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
+- Vector stats: `python -m app.scripts.vector_maint stats`.
 
 How to run a sample task
 1) Add an item to `tools/research_queue.json`:
