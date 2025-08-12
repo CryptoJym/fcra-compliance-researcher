@@ -63,7 +63,13 @@ Progress tracker
   - [ ] GitHub PR automation (branch/commit/PR) with CI
   - [ ] Dashboard metrics, filters, auth
   - [ ] Notifications (Slack/email)
-  - [ ] Docker-compose for all services + production hardening
+ - [ ] Docker-compose for all services + production hardening
+
+Deployment
+- Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
+- Staging: `docker compose -f docker-compose.yml -f deploy/docker-compose.staging.yml up -d` (adds environment via `env/staging.env`).
+- Production: `docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d` (adds resource limits and restart policies via `env/prod.env`).
+- See `DEPLOYMENT.md` and `deploy/README-deploy.md` for details.
 
 How to run a sample task
 1) Add an item to `tools/research_queue.json`:
