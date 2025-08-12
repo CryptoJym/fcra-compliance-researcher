@@ -61,6 +61,7 @@ Progress tracker
   - [ ] Real search integrations (Google CSE, Perplexity) with query templates
   - [ ] Schema-driven extraction enums from `SCHEMA_SPECIFICATION.md`
   - [ ] Validation wiring to upstream `tools/validate_matrix.py`
+ - [x] Schema evolution tooling: version, validate, and migrate patch files (CLI)
   - [ ] Patch application via `tools/apply_research_patch.py`
   - [ ] GitHub PR automation (branch/commit/PR) with CI
   - [ ] Dashboard metrics, filters, auth
@@ -77,6 +78,10 @@ Deployment
 - Configure doc store via env:
   - `VECTOR_DOC_STORE_ENABLED=0` to disable persistence (default enabled)
   - `VECTOR_DOC_STORE_PATH=/path/to/docs.jsonl` to override location
+ - Schema CLI:
+   - `python -m app.scripts.schema_cli version`
+   - `python -m app.scripts.schema_cli validate path/to/patch.json`
+   - `python -m app.scripts.schema_cli migrate path/to/patch.json`
 
 How to run a sample task
 1) Add an item to `tools/research_queue.json`:
