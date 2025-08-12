@@ -3,6 +3,7 @@
     "jurisdiction_path": "unified/city/a.json",
     "priority": 3,
     "inserted_at": "2025-08-12T02:52:04.120419+00:00",
+    "inserted_at": "2025-08-11T22:00:24.628377+00:00",
     "status": "pending",
     "error": null
   },
@@ -10,6 +11,7 @@
     "jurisdiction_path": "unified/city/b.json",
     "priority": 0,
     "inserted_at": "2025-08-12T02:52:04.120570+00:00",
+    "inserted_at": "2025-08-11T22:00:24.628807+00:00",
     "status": "pending",
     "error": null
   },
@@ -17,6 +19,7 @@
     "jurisdiction_path": "unified/city/a.json",
     "priority": 3,
     "inserted_at": "2025-08-12T15:37:03.421391+00:00",
+    "inserted_at": "2025-08-12T02:43:57.907171+00:00",
     "status": "pending",
     "error": null
   },
@@ -24,6 +27,11 @@
     "jurisdiction_path": "unified/city/b.json",
     "priority": 0,
     "inserted_at": "2025-08-12T15:37:03.421655+00:00",
+    "status": "pending",
+    "error": null
+  }
+]
+    "inserted_at": "2025-08-12T02:43:57.907369+00:00",
     "status": "pending",
     "error": null
   }
