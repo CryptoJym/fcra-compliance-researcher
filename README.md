@@ -58,6 +58,7 @@ Progress tracker
   - [x] Basic agents (sourcing/extraction/validation/merge stubs wired)
   - [x] FastAPI dashboard (recent runs)
   - [x] Unit tests and CI-ready runner flags
+  - [x] Performance and integration smoke tests (runner cycle, tools, dashboard filters)
   - [ ] Real search integrations (Google CSE, Perplexity) with query templates
   - [ ] Schema-driven extraction enums from `SCHEMA_SPECIFICATION.md`
   - [ ] Validation wiring to upstream `tools/validate_matrix.py`

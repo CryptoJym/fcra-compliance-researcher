@@ -40,7 +40,7 @@ class ExtractionAgent(Agent):
         super().__init__("extraction_agent")
         self.vector_store = vector_store
         self.llm = None
-        if settings.openai_api_key and ChatOpenAI is not None:
+        if settings.enable_live_llm and settings.openai_api_key and ChatOpenAI is not None:
             # Only initialize live LLM when API is configured
             try:
                 self.llm = ChatOpenAI(
