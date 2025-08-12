@@ -27,7 +27,18 @@ class ResearchQueue:
             self.tasks = []
             return
         with self._lock:
-            data = json.loads(self.queue_file.read_text())
+            raw = self.queue_file.read_text()
+            # Strip potential leftover conflict markers to avoid JSON decode errors
+            cleaned = []
+            for line in raw.splitlines():
+                if line.strip().startswith(("<<<<<<<", "=======", ">>>>>>>")):
+                    continue
+                cleaned.append(line)
+            try:
+                data = json.loads("\n".join(cleaned))
+            except Exception:
+                data = []
+                self.queue_file.write_text("[]")
         tasks: List[ResearchTask] = []
         for item in data:
             inserted_str = item.get("inserted_at")

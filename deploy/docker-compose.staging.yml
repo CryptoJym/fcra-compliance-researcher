@@ -1,0 +1,29 @@
+version: '3.9'
+
+services:
+  dashboard:
+    env_file:
+      - ../env/staging.env
+    environment:
+      APP_ENV: staging
+      DASH_AUTH_DISABLED: "0"
+    ports:
+      - "${DASHBOARD_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  worker:
+    env_file:
+      - ../env/staging.env
+    environment:
+      APP_ENV: staging
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
+
+  flower:
+    env_file:
+      - ../env/staging.env
+    restart: unless-stopped
+

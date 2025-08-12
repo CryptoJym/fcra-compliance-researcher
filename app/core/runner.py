@@ -17,6 +17,7 @@ from ..core.queue import ResearchQueue
 from ..core.logger import setup_logger, set_trace_id
 from ..agents.task_manager import TaskManagerAgent
 from ..agents.sourcing_agent import SourcingAgent
+from ..core.sourcing_templates import generate_queries
 from ..agents.extraction_agent import ExtractionAgent
 from ..agents.validation_agent import ValidationAgent
 from ..agents.merge_agent import MergeAgent
@@ -64,6 +65,7 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
         trace_id = f"run-{int(time.time()*1000)}-{jurisdiction.replace('/', '_')}"
         set_trace_id(trace_id)
         logger.info(f"Starting task: {jurisdiction} | trace_id={trace_id}")
+        started_monotonic = time.monotonic()
         record_run(settings.database_url, jurisdiction, status="in_progress", trace_id=trace_id)
 
         try:
@@ -74,10 +76,23 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                 notify_slack(f"Queued task: {jurisdiction} (id={res.id})")
             else:
                 # 1) Sourcing
-                queries = [
-                    f"https://law.justia.com/codes/{jurisdiction}",
-                ]
-                sourcing.run(jurisdiction, queries)
+                queries = generate_queries(
+                    jurisdiction,
+                    topics=[
+                        "fair chance ordinance",
+                        "ban the box employment",
+                        "criminal history in employment",
+                    ],
+                )
+                # Fallback canonical URL probe
+                queries.append(f"https://law.justia.com/codes/{jurisdiction}")
+                src_res = sourcing.run(jurisdiction, queries)
+                try:
+                    if src_res.get("num_docs", 0) == 0:
+                        from ..core.notifications import notify_slack  # type: ignore
+                        notify_slack(f"No sources found for {jurisdiction}")
+                except Exception:
+                    pass
 
                 # 2) Extraction
                 schema_skeleton = {"jurisdiction": jurisdiction}
@@ -109,6 +124,18 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                 task_manager.mark_completed(jurisdiction)
                 record_run(settings.database_url, jurisdiction, status="completed", trace_id=trace_id)
                 logger.info(f"Completed task: {jurisdiction} | trace_id={trace_id}")
+                # Long-running alert
+                try:
+                    threshold = getattr(settings, "long_running_seconds", None)
+                    if threshold is not None:
+                        elapsed = time.monotonic() - started_monotonic
+                        if elapsed >= float(threshold):
+                            from ..core.notifications import notify_slack  # type: ignore
+                            notify_slack(
+                                f"Long-running task completed: {jurisdiction} in {elapsed:.1f}s (threshold {threshold}s)"
+                            )
+                except Exception:
+                    pass
         except Exception as e:
             logger.exception(f"Task failed: {jurisdiction}: {e}")
             task_manager.mark_error(jurisdiction, str(e))
