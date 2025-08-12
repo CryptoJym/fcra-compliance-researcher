@@ -5,6 +5,7 @@ import hashlib
 from typing import List, Optional, Callable
 from datetime import datetime, UTC, timedelta
 from filelock import FileLock
+import json
 
 try:
     from langchain_community.vectorstores import FAISS  # type: ignore
@@ -37,6 +38,11 @@ class VectorStore:
         # Only use FAISS when the native library is available AND wrapper import exists
         self._use_faiss = bool(FAISS is not None and HAS_FAISS_NATIVE)
         self._lock = FileLock(str(self.index_path) + ".lock")
+        # Doc store path to enable FAISS reindex and maintenance
+        safe_name = self.index_path.name.rstrip("/")
+        # Allow override via settings; else default beside index
+        override = getattr(settings, "vector_doc_store_path", None)
+        self._doc_store_path = Path(override) if override else (self.index_path.parent / f"{safe_name}.docs.jsonl")
         if api_key and OpenAIEmbeddings is not None:
             # Build kwargs compatible with the installed embeddings package
             kwargs: dict = {"model": "text-embedding-3-large"}
@@ -59,6 +65,38 @@ class VectorStore:
             # Offline deterministic embeddings for tests/dev
             self.embeddings = LocalHashEmbeddings()
         self._store = None
+
+    # --- Doc store helpers ---
+    def _append_docs_to_store(self, texts: List[str], metas: List[dict]) -> None:
+        if not texts or not getattr(settings, "vector_doc_store_enabled", True):
+            return
+        # Ensure directory exists
+        self._doc_store_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(self._doc_store_path, "a", encoding="utf-8") as f:
+            for t, m in zip(texts, metas):
+                try:
+                    f.write(json.dumps({"text": t, "meta": m}, ensure_ascii=False) + "\n")
+                except Exception:
+                    # Skip un-serializable metadata
+                    f.write(json.dumps({"text": t, "meta": {}}, ensure_ascii=False) + "\n")
+
+    def _read_all_docs_from_store(self) -> tuple[list[str], list[dict]]:
+        if not getattr(settings, "vector_doc_store_enabled", True) or not self._doc_store_path.exists():
+            return [], []
+        texts: list[str] = []
+        metas: list[dict] = []
+        with open(self._doc_store_path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                    texts.append(obj.get("text", ""))
+                    metas.append(obj.get("meta", {}) or {})
+                except Exception:
+                    continue
+        return texts, metas
 
     def load(self) -> None:
         if not self._use_faiss:
@@ -107,6 +145,8 @@ class VectorStore:
         else:
             self._store.add_texts(texts=dedup_texts, metadatas=dedup_metas)
         self.save()
+        # Append to doc store for future maintenance
+        self._append_docs_to_store(dedup_texts, dedup_metas)
 
     def similarity_search(self, query: str, k: int = 5, filter: Optional[dict] = None):
         if self._store is None:
@@ -148,33 +188,39 @@ class VectorStore:
         if self._store is None:
             self.load()
         assert self._store is not None
-        # Extract current corpus
-        # SimpleVectorStore: has internal lists; FAISS path: we don't have direct docs; keep as no-op
-        if isinstance(self._store, SimpleVectorStore):
-            texts = list(self._store._texts)  # type: ignore[attr-defined]
-            metas = list(self._store._metas)  # type: ignore[attr-defined]
-            now = datetime.now(UTC)
-            filtered_texts: List[str] = []
-            filtered_metas: List[dict] = []
-            seen = set()
-            total = len(texts)
-            for idx, (t, m) in enumerate(zip(texts, metas)):
-                key = (m or {}).get("url") or hashlib.sha1((t or "").encode("utf-8")).hexdigest()
-                if key in seen:
-                    continue
-                if self._is_expired(m or {}, now):
-                    continue
-                seen.add(key)
-                filtered_texts.append(t)
-                filtered_metas.append(m)
-                if progress_cb:
-                    progress_cb(idx + 1, total)
-            # Reset and rebuild
+        # Extract corpus from doc store so both FAISS and SimpleVectorStore can rebuild
+        texts_all, metas_all = self._read_all_docs_from_store()
+        now = datetime.now(UTC)
+        filtered_texts: List[str] = []
+        filtered_metas: List[dict] = []
+        seen = set()
+        total = len(texts_all)
+        for idx, (t, m) in enumerate(zip(texts_all, metas_all)):
+            key = (m or {}).get("url") or hashlib.sha1((t or "").encode("utf-8")).hexdigest()
+            if key in seen:
+                continue
+            if self._is_expired(m or {}, now):
+                continue
+            seen.add(key)
+            filtered_texts.append(t)
+            filtered_metas.append(m)
+            if progress_cb:
+                progress_cb(idx + 1, total)
+
+        if self._use_faiss:
+            with self._lock:
+                # Rebuild FAISS from filtered corpus
+                if filtered_texts:
+                    self._store = FAISS.from_texts(filtered_texts, self.embeddings, metadatas=filtered_metas)  # type: ignore
+                else:
+                    # Initialize empty index
+                    self._store = FAISS.from_texts([""], self.embeddings, metadatas=[{}])  # type: ignore
+                self.save()
+        else:
+            # Rebuild simple store
+            assert isinstance(self._store, SimpleVectorStore)
             self._store._texts = []  # type: ignore[attr-defined]
             self._store._metas = []  # type: ignore[attr-defined]
             self._store._vectors = []  # type: ignore[attr-defined]
             self._store.add_texts(filtered_texts, filtered_metas)
-            self.save()
-        else:
-            # For FAISS: best-effort no-op for now; external persisted index lacks doc store
             self.save()
