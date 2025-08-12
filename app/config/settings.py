@@ -52,5 +52,9 @@ class Settings(BaseSettings):
     # Vector store retention (days). If set, purge documents older than N days based on metadata.ingested_at
     vector_retention_days: int | None = None
 
+    # Vector doc store persistence for maintenance/reindex (JSONL). When disabled, reindex falls back to in-memory where possible
+    vector_doc_store_enabled: bool = True
+    vector_doc_store_path: str | None = None
+
 
 settings = Settings()

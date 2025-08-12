@@ -40,7 +40,9 @@ class VectorStore:
         self._lock = FileLock(str(self.index_path) + ".lock")
         # Doc store path to enable FAISS reindex and maintenance
         safe_name = self.index_path.name.rstrip("/")
-        self._doc_store_path = self.index_path.parent / f"{safe_name}.docs.jsonl"
+        # Allow override via settings; else default beside index
+        override = getattr(settings, "vector_doc_store_path", None)
+        self._doc_store_path = Path(override) if override else (self.index_path.parent / f"{safe_name}.docs.jsonl")
         if api_key and OpenAIEmbeddings is not None:
             # Build kwargs compatible with the installed embeddings package
             kwargs: dict = {"model": "text-embedding-3-large"}
@@ -66,7 +68,7 @@ class VectorStore:
 
     # --- Doc store helpers ---
     def _append_docs_to_store(self, texts: List[str], metas: List[dict]) -> None:
-        if not texts:
+        if not texts or not getattr(settings, "vector_doc_store_enabled", True):
             return
         # Ensure directory exists
         self._doc_store_path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,7 +81,7 @@ class VectorStore:
                     f.write(json.dumps({"text": t, "meta": {}}, ensure_ascii=False) + "\n")
 
     def _read_all_docs_from_store(self) -> tuple[list[str], list[dict]]:
-        if not self._doc_store_path.exists():
+        if not getattr(settings, "vector_doc_store_enabled", True) or not self._doc_store_path.exists():
             return [], []
         texts: list[str] = []
         metas: list[dict] = []
