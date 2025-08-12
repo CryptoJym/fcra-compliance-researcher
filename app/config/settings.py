@@ -1,10 +1,27 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from ..core.secrets import get_default_provider
 
 
 class Settings(BaseSettings):
+    def __init__(self, **values):
+        # Load secrets first to allow defaults
+        sp = get_default_provider()
+        # seed env if missing
+        def seed(name: str, val: str | None):
+            if val and not os.environ.get(name):
+                os.environ[name] = val
+        seed("GITHUB_TOKEN", sp.get("GITHUB_TOKEN"))
+        seed("GITHUB_REPO", sp.get("GITHUB_REPO"))
+        seed("GOOGLE_API_KEY", sp.get("GOOGLE_API_KEY"))
+        seed("GOOGLE_CSE_ID", sp.get("GOOGLE_CSE_ID"))
+        seed("OPENAI_API_KEY", sp.get("OPENAI_API_KEY"))
+        seed("OPENAI_BASE_URL", sp.get("OPENAI_BASE_URL"))
+        seed("PERPLEXITY_API_KEY", sp.get("PERPLEXITY_API_KEY"))
+        super().__init__(**values)
     model_config = SettingsConfigDict(env_file=Path(__file__).resolve().parents[2] / ".env", env_file_encoding="utf-8")
 
     app_env: str = "development"

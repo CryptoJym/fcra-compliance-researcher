@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from celery import shared_task
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 from ..config.settings import settings
 from ..core.paths import project_root
@@ -26,7 +26,6 @@ def _notify_slack_safe(message: str) -> None:
         from ..core.notifications import notify_slack  # type: ignore
         notify_slack(message)
     except Exception:
-        # Optional integration. Ignore if not available.
         pass
 
 
@@ -35,14 +34,10 @@ def _push_dlq_safe(payload: dict) -> None:
         from ..core.dlq import push_to_dlq  # type: ignore
         push_to_dlq(payload)
     except Exception:
-        # Optional integration. Ignore if not available.
         pass
 
 
 @shared_task(name="app.agents.tasks.process_jurisdiction", autoretry_for=(Exception,), retry_backoff=True, retry_kwargs={"max_retries": 3})
-<<<<<<< HEAD
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=0.5, min=0.5, max=8), reraise=True)
-=======
 @retry(
     stop=stop_after_attempt(getattr(settings, "retry_max_attempts", 3)),
     wait=wait_exponential(
@@ -52,7 +47,6 @@ def _push_dlq_safe(payload: dict) -> None:
     ),
     reraise=True,
 )
->>>>>>> origin/main
 def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, skip_merge: bool = False, trace_id: Optional[str] = None) -> dict:
     if trace_id:
         set_trace_id(trace_id)
@@ -68,19 +62,15 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
     merge = MergeAgent()
 
     try:
-        # Sourcing
         queries = [f"https://law.justia.com/codes/{jurisdiction_path}"]
         sourcing.run(jurisdiction_path, queries)
 
-        # Extraction
         schema_skeleton = {"jurisdiction": jurisdiction_path}
         patch = extraction.run(jurisdiction_path, schema_skeleton)
 
-        # Write patch temp file
         patch_path = project_root() / "research_inputs" / f"{Path(jurisdiction_path).stem}.json"
         patch_path.write_text(json.dumps(patch, indent=2))
 
-        # Validation
         jurisdiction_file = project_root() / jurisdiction_path
         if not skip_validation:
             ok, details = validation.run(jurisdiction_file, patch_path)
@@ -90,7 +80,6 @@ def process_jurisdiction(jurisdiction_path: str, skip_validation: bool = False, 
                 _notify_slack_safe(f"Validation failed: {jurisdiction_path}")
                 return {"status": "validation_failed", "details": details}
 
-        # Merge
         if not skip_merge:
             ok, details = merge.run(jurisdiction_file, patch_path)
             if not ok:
