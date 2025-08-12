@@ -7,6 +7,7 @@ Project overview
 Architecture
 - Orchestration: lightweight Typer CLI; ready to plug into CrewAI/AutoGen if needed.
 - Retrieval: local vector store with FAISS or in-memory fallback for offline/dev.
+ - Retrieval: local vector store with FAISS or in-memory fallback for offline/dev; optional JSONL doc-store for reindex/maintenance.
 - LLM: calls are optional and disabled by default for tests; can use self-hosted OpenAI-compatible models.
 - State: SQLite DB for run logs and metrics; JSON queue for task scheduling.
 - Dashboard: FastAPI + Jinja template for recent runs.
@@ -53,6 +54,7 @@ Progress tracker
   - [x] Project scaffolding and packaging
   - [x] Queue, DB models, logger, runner CLI
   - [x] Offline-safe vector store and embeddings
+  - [x] Dedupe, retention, and reindex; doc store + CLI (vector_maint)
   - [x] Basic agents (sourcing/extraction/validation/merge stubs wired)
   - [x] FastAPI dashboard (recent runs)
   - [x] Unit tests and CI-ready runner flags
@@ -71,7 +73,10 @@ Progress tracker
 Deployment
 - Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
 - Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
-- Vector stats: `python -m app.scripts.vector_maint stats`.
+- Vector stats: `python -m app.scripts.vector_maint stats` (reports total and unique docs).
+- Configure doc store via env:
+  - `VECTOR_DOC_STORE_ENABLED=0` to disable persistence (default enabled)
+  - `VECTOR_DOC_STORE_PATH=/path/to/docs.jsonl` to override location
 
 How to run a sample task
 1) Add an item to `tools/research_queue.json`:
