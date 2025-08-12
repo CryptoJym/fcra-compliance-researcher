@@ -1,1 +1,7 @@
-[]
+[
+  {
+    "jurisdiction": "unified/city/san_francisco.json",
+    "stage": "task",
+    "error": "RetryError[<Future at 0x129203750 state=finished raised RuntimeError>]"
+  }
+]
