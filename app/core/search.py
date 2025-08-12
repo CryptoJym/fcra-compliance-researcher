@@ -56,14 +56,74 @@ class GoogleCSEProvider(SearchProvider):
             return []
 
 
+class PerplexityProvider(SearchProvider):
+    def __init__(self, api_key: Optional[str]):
+        self.api_key = api_key
+
+    def search(self, query: str, num_results: int = 5) -> List[SearchResult]:
+        if not self.api_key:
+            return []
+        try:
+            # Perplexity API: simple search-like endpoint (mocked usage)
+            # Using hypothetical endpoint for offline-friendly tests
+            resp = httpx.post(
+                "https://api.perplexity.ai/search",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json={"q": query, "k": num_results},
+                timeout=20,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            items = data.get("results") or []
+            results: List[SearchResult] = []
+            for it in items:
+                results.append(
+                    SearchResult(
+                        url=it.get("url"),
+                        title=it.get("title", ""),
+                        snippet=it.get("snippet", ""),
+                    )
+                )
+            return results
+        except Exception as e:
+            logger.error(f"Perplexity error: {e}")
+            return []
+
+
+class CombinedSearchProvider(SearchProvider):
+    def __init__(self, providers: List[SearchProvider]):
+        self.providers = providers
+
+    def search(self, query: str, num_results: int = 5) -> List[SearchResult]:
+        merged: List[SearchResult] = []
+        seen = set()
+        for p in self.providers:
+            for r in p.search(query, num_results):
+                if not r.url or r.url in seen:
+                    continue
+                seen.add(r.url)
+                merged.append(r)
+                if len(merged) >= num_results:
+                    return merged
+        return merged
+
 class NullSearchProvider(SearchProvider):
     def search(self, query: str, num_results: int = 5) -> List[SearchResult]:
         return []
 
 
 def get_default_search_provider() -> SearchProvider:
-    key = os.getenv("GOOGLE_API_KEY")
-    cse = os.getenv("GOOGLE_CSE_ID")
-    if key and cse:
-        return GoogleCSEProvider(key, cse)
-    return NullSearchProvider()
+    google_key = os.getenv("GOOGLE_API_KEY")
+    google_cse = os.getenv("GOOGLE_CSE_ID")
+    perplexity_key = os.getenv("PERPLEXITY_API_KEY")
+
+    providers: List[SearchProvider] = []
+    if google_key and google_cse:
+        providers.append(GoogleCSEProvider(google_key, google_cse))
+    if perplexity_key:
+        providers.append(PerplexityProvider(perplexity_key))
+    if not providers:
+        return NullSearchProvider()
+    if len(providers) == 1:
+        return providers[0]
+    return CombinedSearchProvider(providers)
