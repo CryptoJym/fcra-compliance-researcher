@@ -38,7 +38,7 @@ class ValidationAgent(Agent):
                 pass
             return success, details
         except FileNotFoundError:
-            # If external tool not available, rely on internal checks
+            # If external tool not available, rely on internal checks, add confidence if possible
             out = {"internal": details_internal, "warning": "External validator not found"}
             try:
                 patch_data = json.loads(patch_file.read_text())
