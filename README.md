@@ -67,6 +67,7 @@ Progress tracker
   - [ ] GitHub PR automation (branch/commit/PR) with CI
   - [ ] Dashboard metrics, filters, auth
   - [ ] Notifications (Slack/email)
+  - [x] Security & secrets: Secrets provider (env/JSON/keyring) and log redaction helper
 - [ ] Docker-compose for all services + production hardening
   - [x] Base compose with dashboard, worker, redis
   - [ ] Add env profiles (staging/prod) and healthchecks
