@@ -34,7 +34,11 @@ class ResearchQueue:
                 if line.strip().startswith(("<<<<<<<", "=======", ">>>>>>>")):
                     continue
                 cleaned.append(line)
-            data = json.loads("\n".join(cleaned))
+            try:
+                data = json.loads("\n".join(cleaned))
+            except Exception:
+                data = []
+                self.queue_file.write_text("[]")
         tasks: List[ResearchTask] = []
         for item in data:
             inserted_str = item.get("inserted_at")

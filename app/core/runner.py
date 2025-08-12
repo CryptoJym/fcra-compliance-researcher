@@ -65,6 +65,7 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
         trace_id = f"run-{int(time.time()*1000)}-{jurisdiction.replace('/', '_')}"
         set_trace_id(trace_id)
         logger.info(f"Starting task: {jurisdiction} | trace_id={trace_id}")
+        started_monotonic = time.monotonic()
         record_run(settings.database_url, jurisdiction, status="in_progress", trace_id=trace_id)
 
         try:
@@ -123,6 +124,18 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                 task_manager.mark_completed(jurisdiction)
                 record_run(settings.database_url, jurisdiction, status="completed", trace_id=trace_id)
                 logger.info(f"Completed task: {jurisdiction} | trace_id={trace_id}")
+                # Long-running alert
+                try:
+                    threshold = getattr(settings, "long_running_seconds", None)
+                    if threshold is not None:
+                        elapsed = time.monotonic() - started_monotonic
+                        if elapsed >= float(threshold):
+                            from ..core.notifications import notify_slack  # type: ignore
+                            notify_slack(
+                                f"Long-running task completed: {jurisdiction} in {elapsed:.1f}s (threshold {threshold}s)"
+                            )
+                except Exception:
+                    pass
         except Exception as e:
             logger.exception(f"Task failed: {jurisdiction}: {e}")
             task_manager.mark_error(jurisdiction, str(e))
