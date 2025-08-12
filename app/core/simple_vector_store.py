@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Iterator, Tuple
 
 from .embeddings import LocalHashEmbeddings
 
@@ -28,6 +28,25 @@ class SimpleVectorStore:
         self._texts.extend(new_texts)
         self._metas.extend(new_metas)
         self._vectors.extend(self.embeddings.embed_documents(new_texts))
+
+    def list_documents(self) -> Iterator[Tuple[int, str, dict]]:
+        for i, (text, meta) in enumerate(zip(self._texts, self._metas)):
+            yield i, text, meta
+
+    def delete_indices(self, indices: List[int]) -> None:
+        index_set = set(indices)
+        new_texts: List[str] = []
+        new_metas: List[dict] = []
+        new_vectors: List[List[float]] = []
+        for i, (t, m, v) in enumerate(zip(self._texts, self._metas, self._vectors)):
+            if i in index_set:
+                continue
+            new_texts.append(t)
+            new_metas.append(m)
+            new_vectors.append(v)
+        self._texts = new_texts
+        self._metas = new_metas
+        self._vectors = new_vectors
 
     def _metadata_matches(self, metadata: Dict[str, Any], filter: Dict[str, Any]) -> bool:
         for key, val in filter.items():

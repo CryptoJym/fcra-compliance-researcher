@@ -37,5 +37,23 @@ def purge_by_tag(tag: str):
         typer.echo("Purge not supported in FAISS mode.")
 
 
+@app.command()
+def reindex():
+    """Rebuild the underlying index, applying dedupe and retention policies."""
+    vs = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+    vs.reindex()
+    typer.echo("Reindexed vector store")
+
+
+@app.command()
+def purge_retention():
+    """Purge documents older than retention window (SimpleVectorStore only)."""
+    vs = VectorStore(index_path=settings.vector_db_path, api_key=settings.openai_api_key, base_url=settings.openai_base_url)
+    vs.load()
+    # Leverage reindex which applies retention filtering internally
+    vs.reindex()
+    typer.echo("Purged per retention policy via reindex")
+
+
 if __name__ == "__main__":
     app()

@@ -17,6 +17,7 @@ from ..core.queue import ResearchQueue
 from ..core.logger import setup_logger, set_trace_id
 from ..agents.task_manager import TaskManagerAgent
 from ..agents.sourcing_agent import SourcingAgent
+from ..core.sourcing_templates import generate_queries
 from ..agents.extraction_agent import ExtractionAgent
 from ..agents.validation_agent import ValidationAgent
 from ..agents.merge_agent import MergeAgent
@@ -74,10 +75,23 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                 notify_slack(f"Queued task: {jurisdiction} (id={res.id})")
             else:
                 # 1) Sourcing
-                queries = [
-                    f"https://law.justia.com/codes/{jurisdiction}",
-                ]
-                sourcing.run(jurisdiction, queries)
+                queries = generate_queries(
+                    jurisdiction,
+                    topics=[
+                        "fair chance ordinance",
+                        "ban the box employment",
+                        "criminal history in employment",
+                    ],
+                )
+                # Fallback canonical URL probe
+                queries.append(f"https://law.justia.com/codes/{jurisdiction}")
+                src_res = sourcing.run(jurisdiction, queries)
+                try:
+                    if src_res.get("num_docs", 0) == 0:
+                        from ..core.notifications import notify_slack  # type: ignore
+                        notify_slack(f"No sources found for {jurisdiction}")
+                except Exception:
+                    pass
 
                 # 2) Extraction
                 schema_skeleton = {"jurisdiction": jurisdiction}
