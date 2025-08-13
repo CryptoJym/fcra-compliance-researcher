@@ -113,6 +113,45 @@ class NullSearchProvider(SearchProvider):
 
 
 def get_default_search_provider() -> SearchProvider:
+    # Optional SearXNG provider
+    searxng_url = os.getenv("SEARXNG_URL")
+    if searxng_url:
+        try:
+            import httpx  # already imported above
+
+            class SearxngProvider(SearchProvider):
+                def __init__(self, base_url: str):
+                    self.base_url = base_url.rstrip("/")
+
+                def search(self, query: str, num_results: int = 5) -> List[SearchResult]:
+                    full_query = f"{query} site:gov filetype:pdf"
+                    try:
+                        resp = httpx.get(
+                            f"{self.base_url}/search",
+                            params={"q": full_query, "format": "json"},
+                            timeout=20,
+                        )
+                        if resp.status_code != 200:
+                            return []
+                        data = resp.json()
+                        results = []
+                        for it in (data.get("results") or [])[: num_results]:
+                            results.append(
+                                SearchResult(
+                                    url=it.get("url"),
+                                    title=it.get("title", ""),
+                                    snippet=it.get("content", ""),
+                                )
+                            )
+                        return results
+                    except Exception as e:
+                        logger.error(f"SearXNG error: {e}")
+                        return []
+
+            return SearxngProvider(searxng_url)
+        except Exception:
+            pass
+
     google_key = os.getenv("GOOGLE_API_KEY")
     google_cse = os.getenv("GOOGLE_CSE_ID")
     perplexity_key = os.getenv("PERPLEXITY_API_KEY")
