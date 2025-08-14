@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from typing import TypedDict, List, Dict, Any
+import os
+import time
 
 
 class ResearchState(TypedDict, total=False):
@@ -72,12 +74,25 @@ def build_agent():
                 docs.append({"url": r.url, "title": r.title, "snippet": r.snippet})
         return {"docs": docs}
 
+    _crawl_cache: Dict[str, Dict[str, Any]] = {}
+
     def crawl_node(state: ResearchState) -> ResearchState:
         extracted: List[Dict[str, Any]] = []
         for d in state.get("docs", []) or []:
             url = d.get("url") or ""
             try:
-                extracted.append(fetch_and_extract(url))
+                if url in _crawl_cache:
+                    extracted.append(_crawl_cache[url])
+                else:
+                    start = time.monotonic()
+                    timeout_s = float(os.getenv("DEEP_NODE_TIMEOUT_S", "20"))
+                    res = fetch_and_extract(url)
+                    if time.monotonic() - start <= timeout_s:
+                        _crawl_cache[url] = res
+                        extracted.append(res)
+                    else:
+                        # Timeout guard: skip
+                        continue
             except Exception:
                 continue
         return {"docs": extracted}
@@ -89,12 +104,18 @@ def build_agent():
             facts.append({"source": d.get("source"), "claim": "extracted_field_placeholder"})
         return {"facts": facts}
 
+    def _conflicts(a: Dict[str, Any], b: Dict[str, Any]) -> bool:
+        # Simple placeholder: different claim strings considered conflict
+        return a.get("claim") and b.get("claim") and a["claim"] != b["claim"]
+
     def validate_node(state: ResearchState) -> ResearchState:
         facts = state.get("facts", []) or []
         validated = []
         for f in facts:
-            validated.append(f)
-        needs_refine = len(validated) < max(1, int(0.8 * len(facts) or 1))
+            if not any(_conflicts(f, other) for other in facts if other is not f):
+                validated.append(f)
+        threshold = float(os.getenv("DEEP_COVERAGE_THRESHOLD", "0.8"))
+        needs_refine = len(validated) < max(1, int(threshold * len(facts) or 1))
         return {"validated_facts": validated, "needs_refine": needs_refine}
 
     def synthesize_node(state: ResearchState) -> ResearchState:

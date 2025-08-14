@@ -34,3 +34,4 @@ def test_schema_cli_validate_and_migrate(tmp_path: Path):
     assert data2["ok"] is True
 
 
+

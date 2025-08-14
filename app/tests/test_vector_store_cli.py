@@ -25,3 +25,4 @@ def test_vector_reindex_and_stats(tmp_path: Path, monkeypatch):
     assert data.get("docs", 0) >= 2
 
 
+
