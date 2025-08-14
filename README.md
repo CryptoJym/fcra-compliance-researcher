@@ -73,7 +73,6 @@ Progress tracker
   - [ ] GitHub PR automation (branch/commit/PR) with CI
   - [ ] Dashboard metrics, filters, auth
   - [ ] Notifications (Slack/email)
-  - [x] Security & secrets: Secrets provider (env/JSON/keyring) and log redaction helper
 - [ ] Docker-compose for all services + production hardening
   - [x] Base compose with dashboard, worker, redis
   - [ ] Add env profiles (staging/prod) and healthchecks
@@ -84,11 +83,13 @@ Deployment
 - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
   - Healthchecks and resource limits are configured for both services.
   - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`, `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`.
-  - A second CI job installs `.[deep]` and runs a light smoke test with both services (allowed to fail).
-
-### Evaluation & Gold Data
-- Minimal evaluation summary is available at `/eval` (and API at `/api/eval`).
-- A tiny gold dataset lives at `data/test_jurisdictions.json` for future metrics expansion.
+  - Deep orchestration knobs:
+    - `DEEP_NODE_TIMEOUT_S`: default soft timeout for nodes (seconds)
+    - `DEEP_SEARCH_TIMEOUT_S`: override for search node
+    - `DEEP_EXTRACT_TIMEOUT_S`: override for extract node
+    - `DEEP_VALIDATE_TIMEOUT_S`: override for validate node
+    - `DEEP_SYNTH_TIMEOUT_S`: override for synthesize node
+    - `DEEP_MAX_HOPS`: cap the number of refinement loops
 - Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
 - Vector stats: `python -m app.scripts.vector_maint stats` (reports total and unique docs).
 - Configure doc store via env:

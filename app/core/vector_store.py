@@ -101,6 +101,10 @@ class VectorStore:
     def load(self) -> None:
         if not self._use_faiss:
             self._store = SimpleVectorStore()
+            # For simple store, hydrate from doc store for cross-process persistence
+            texts, metas = self._read_all_docs_from_store()
+            if texts:
+                self._store.add_texts(texts=texts, metadatas=metas)
             return
         # FAISS path
         with self._lock:

@@ -8,5 +8,25 @@
     "jurisdiction": "unified/city/san_francisco.json",
     "stage": "task",
     "error": "RetryError[<Future at 0x119f01090 state=finished raised RuntimeError>]"
+  },
+  {
+    "jurisdiction": "unified/city/san_francisco.json",
+    "stage": "task",
+    "error": "RetryError[<Future at 0x7f76019c25d0 state=finished raised RuntimeError>]"
+  },
+  {
+    "jurisdiction": "unified/city/san_francisco.json",
+    "stage": "task",
+    "error": "RetryError[<Future at 0x7fadfff98e10 state=finished raised RuntimeError>]"
+  },
+  {
+    "jurisdiction": "unified/city/san_francisco.json",
+    "stage": "task",
+    "error": "RetryError[<Future at 0x7ff8fb3a8e10 state=finished raised RuntimeError>]"
+  },
+  {
+    "jurisdiction": "unified/city/san_francisco.json",
+    "stage": "task",
+    "error": "RetryError[<Future at 0x7f4efa0a8e10 state=finished raised RuntimeError>]"
   }
 ]

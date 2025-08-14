@@ -12,11 +12,14 @@ class QdrantUnavailable(Exception):
 
 
 def _get_qdrant_client():
+    # Only use Qdrant when explicitly configured
+    url = os.getenv("QDRANT_URL")
+    if not url:
+        raise QdrantUnavailable("QDRANT_URL not set")
     try:
         from qdrant_client import QdrantClient  # type: ignore
     except Exception as e:
         raise QdrantUnavailable(f"qdrant-client not installed: {e}")
-    url = os.getenv("QDRANT_URL", "http://localhost:6333")
     return QdrantClient(url)
 
 
