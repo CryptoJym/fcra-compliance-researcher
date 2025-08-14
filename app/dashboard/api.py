@@ -13,6 +13,7 @@ from ..core.paths import project_root
 from datetime import datetime, UTC
 import json
 from pathlib import Path
+from ..config.settings import settings
 
 LOGS_DIR = Path("logs")
 
@@ -66,7 +67,7 @@ async def get_logs(trace_id: str):
 @router.get("/eval")
 async def get_eval():
     """Return a minimal evaluation aggregate from recent runs."""
-    engine = get_engine()
+    engine = get_engine(settings.database_url)
     with Session(engine) as session:
         runs = session.query(JurisdictionRun).order_by(JurisdictionRun.started_at.desc()).limit(200).all()
     total = len(runs)

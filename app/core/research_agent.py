@@ -14,6 +14,7 @@ class ResearchState(TypedDict, total=False):
     output: str
     citations: List[Dict[str, Any]]
     needs_refine: bool
+    hop: int
 
 
 def _try_import_langgraph():
@@ -69,9 +70,22 @@ def build_agent():
     def search_node(state: ResearchState) -> ResearchState:
         provider = get_default_search_provider()
         docs: List[Dict[str, Any]] = []
-        for q in state.get("sub_queries", []) or []:
-            for r in provider.search(q, num_results=5):
-                docs.append({"url": r.url, "title": r.title, "snippet": r.snippet})
+        start = time.monotonic()
+        try:
+            timeout_s = float(os.getenv("DEEP_SEARCH_TIMEOUT_S", os.getenv("DEEP_NODE_TIMEOUT_S", "20")))
+        except Exception:
+            timeout_s = 20.0
+        for q in (state.get("sub_queries", []) or []):
+            if time.monotonic() - start > timeout_s:
+                break
+            try:
+                for r in provider.search(q, num_results=5):
+                    if time.monotonic() - start > timeout_s:
+                        break
+                    docs.append({"url": r.url, "title": r.title, "snippet": r.snippet})
+            except Exception:
+                # Best-effort: continue to next query on provider errors
+                continue
         return {"docs": docs}
 
     _crawl_cache: Dict[str, Dict[str, Any]] = {}
@@ -100,7 +114,14 @@ def build_agent():
     def extract_node(state: ResearchState) -> ResearchState:
         # Placeholder extraction; integrate schema-driven prompts later
         facts: List[Dict[str, Any]] = []
+        start = time.monotonic()
+        try:
+            timeout_s = float(os.getenv("DEEP_EXTRACT_TIMEOUT_S", os.getenv("DEEP_NODE_TIMEOUT_S", "20")))
+        except Exception:
+            timeout_s = 20.0
         for d in state.get("docs", []) or []:
+            if time.monotonic() - start > timeout_s:
+                break
             facts.append({"source": d.get("source"), "claim": "extracted_field_placeholder"})
         return {"facts": facts}
 
@@ -110,18 +131,46 @@ def build_agent():
 
     def validate_node(state: ResearchState) -> ResearchState:
         facts = state.get("facts", []) or []
-        validated = []
+        validated: List[Dict[str, Any]] = []
+        start = time.monotonic()
+        try:
+            timeout_s = float(os.getenv("DEEP_VALIDATE_TIMEOUT_S", os.getenv("DEEP_NODE_TIMEOUT_S", "20")))
+        except Exception:
+            timeout_s = 20.0
         for f in facts:
+            if time.monotonic() - start > timeout_s:
+                break
             if not any(_conflicts(f, other) for other in facts if other is not f):
                 validated.append(f)
         threshold = float(os.getenv("DEEP_COVERAGE_THRESHOLD", "0.8"))
-        needs_refine = len(validated) < max(1, int(threshold * len(facts) or 1))
-        return {"validated_facts": validated, "needs_refine": needs_refine}
+        needs_refine = len(validated) < max(1, int(threshold * (len(facts) or 1)))
+        # Hop counting logic with cap
+        try:
+            max_hops = int(os.getenv("DEEP_MAX_HOPS", "3"))
+        except Exception:
+            max_hops = 3
+        current_hop = int(state.get("hop", 0) or 0)
+        if needs_refine and current_hop < max_hops:
+            # Increment only when we actually intend to refine/loop
+            next_hop = current_hop + 1
+        else:
+            # Reached coverage or hop limit; do not loop further
+            needs_refine = False
+            next_hop = current_hop
+        return {"validated_facts": validated, "needs_refine": needs_refine, "hop": next_hop}
 
     def synthesize_node(state: ResearchState) -> ResearchState:
+        start = time.monotonic()
+        try:
+            timeout_s = float(os.getenv("DEEP_SYNTH_TIMEOUT_S", os.getenv("DEEP_NODE_TIMEOUT_S", "20")))
+        except Exception:
+            timeout_s = 20.0
         if llm_large is not None:
             try:
                 text = llm_large.invoke(f"Synthesize FCRA compliance from facts: {state.get('validated_facts', [])}")
+                # Soft timeout check; if exceeded, fall back
+                if time.monotonic() - start > timeout_s:
+                    return {"output": "synthesis_placeholder"}
                 return {"output": str(text)}
             except Exception:
                 pass
@@ -148,7 +197,12 @@ def build_agent():
         return {"citations": citations, "confidence": conf}
 
     def decide_to_loop(source_node: str, state: ResearchState) -> str:
-        if state.get("needs_refine"):
+        try:
+            max_hops = int(os.getenv("DEEP_MAX_HOPS", "3"))
+        except Exception:
+            max_hops = 3
+        current_hop = int(state.get("hop", 0) or 0)
+        if state.get("needs_refine") and current_hop < max_hops:
             return "plan"
         return "synthesize"
 
