@@ -27,7 +27,16 @@ app = typer.Typer(add_completion=False)
 
 
 @app.command()
-def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queue_path: str | None = None, use_celery: bool = False, skip_validation: bool = False, skip_merge: bool = False):
+def workers(
+    workers: int = 2,
+    idle_sleep: float = 3.0,
+    max_cycles: int = 0,
+    queue_path: str | None = None,
+    use_celery: bool = False,
+    skip_validation: bool = False,
+    skip_merge: bool = False,
+    deep_research: bool = False,
+):
     logger = setup_logger("runner")
 
     init_db(settings.database_url)
@@ -47,6 +56,14 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
         extraction = ExtractionAgent(vector)
         validation = ValidationAgent()
         merge = MergeAgent()
+        research_agent = None
+        if deep_research:
+            try:
+                from ..core.research_agent import build_agent  # Lazy import to avoid optional deps when unused
+
+                research_agent = build_agent()
+            except Exception:
+                research_agent = None
 
     cycles = 0
     while True:
@@ -76,6 +93,12 @@ def workers(workers: int = 2, idle_sleep: float = 3.0, max_cycles: int = 0, queu
                 notify_slack(f"Queued task: {jurisdiction} (id={res.id})")
             else:
                 # 1) Sourcing
+                if deep_research and research_agent is not None:
+                    try:
+                        _ = research_agent.invoke({"query": f"FCRA compliance {jurisdiction}"})  # type: ignore[operator]
+                        logger.info(f"Deep research pre-run completed for {jurisdiction}")
+                    except Exception:
+                        logger.info("Deep research not available or failed; continuing with standard pipeline")
                 queries = generate_queries(
                     jurisdiction,
                     topics=[

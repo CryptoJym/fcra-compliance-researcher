@@ -5,12 +5,12 @@ Project overview
 - Components: Task Manager, Sourcing Agent, Extraction Agent, Validation Agent, Merge Agent, and a web Dashboard for observability.
 
 Architecture
-- Orchestration: lightweight Typer CLI; ready to plug into CrewAI/AutoGen if needed.
-- Retrieval: local vector store with FAISS or in-memory fallback for offline/dev.
- - Retrieval: local vector store with FAISS or in-memory fallback for offline/dev; optional JSONL doc-store for reindex/maintenance.
-- LLM: calls are optional and disabled by default for tests; can use self-hosted OpenAI-compatible models.
+- Orchestration: lightweight Typer CLI; optional LangGraph deep-research workflow.
+- Retrieval: FAISS or in-memory fallback for dev; optional Qdrant for production with metadata filtering.
+- LLM: self-hosted OpenAI-compatible models or local Ollama when `ENABLE_LIVE_LLM=1`.
 - State: SQLite DB for run logs and metrics; JSON queue for task scheduling.
 - Dashboard: FastAPI + Jinja template for recent runs.
+- See `docs/architecture.md` for the detailed diagram and components.
 
 Getting started
 1) Setup environment
@@ -32,6 +32,10 @@ Getting started
   ```bash
   docker compose up -d
   ```
+  Optional services for deep research:
+  ```bash
+  docker compose up -d qdrant searxng
+  ```
 - Start the worker loop (single-command app):
   ```bash
   python -m app.core.runner --workers 2 --idle-sleep 3.0
@@ -39,6 +43,7 @@ Getting started
   Options:
   - `--max-cycles N` to stop after N cycles (useful in CI/tests)
   - `--queue-path PATH` to point to a custom `research_queue.json`
+  - `--deep-research` to enable LangGraph-based multi-hop pre-run (optional; requires extras 'deep')
 
 Directory layout
 - `app/agents/`: agents for task management, sourcing, extraction, validation, and merging
@@ -75,6 +80,7 @@ Progress tracker
 
 Deployment
 - Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
+ - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
 - Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
 - Vector stats: `python -m app.scripts.vector_maint stats` (reports total and unique docs).
 - Configure doc store via env:
@@ -84,6 +90,16 @@ Deployment
    - `python -m app.scripts.schema_cli version`
    - `python -m app.scripts.schema_cli validate path/to/patch.json`
    - `python -m app.scripts.schema_cli migrate path/to/patch.json`
+
+Deep research setup (optional)
+- Install extras: `pip install -e .[deep]`
+- Bring up services: `docker compose up -d qdrant searxng`
+- Set env:
+  - `SEARXNG_URL=http://localhost:8080`
+  - `QDRANT_URL=http://localhost:6333`
+  - `OLLAMA_MODEL=oss-120b` (if using Ollama)
+  - `ENABLE_LIVE_LLM=1`
+  - Run: `python -m app.core.runner --deep-research --workers 1 --max-cycles 1`
 
 How to run a sample task
 1) Add an item to `tools/research_queue.json`:
