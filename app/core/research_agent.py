@@ -14,6 +14,7 @@ class ResearchState(TypedDict, total=False):
     output: str
     citations: List[Dict[str, Any]]
     needs_refine: bool
+    jurisdiction_path: str
 
 
 def _try_import_langgraph():
@@ -135,6 +136,17 @@ def build_agent():
         # Upsert evidence docs to Qdrant if available
         try:
             upsert_docs(docs)
+        except Exception:
+            pass
+        # Persist basic provenance best-effort
+        try:
+            from .provenance import record_provenance  # lazy import
+
+            jpath = state.get("jurisdiction_path") or ""
+            for c in citations:
+                src = c.get("source")
+                if isinstance(src, str) and jpath:
+                    record_provenance(jpath, "unknown", src, c.get("claim") or "")
         except Exception:
             pass
         # Best-effort confidence metrics

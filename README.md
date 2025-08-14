@@ -84,6 +84,11 @@ Deployment
 - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
   - Healthchecks and resource limits are configured for both services.
   - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`, `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`.
+  - A second CI job installs `.[deep]` and runs a light smoke test with both services (allowed to fail).
+
+### Evaluation & Gold Data
+- Minimal evaluation summary is available at `/eval` (and API at `/api/eval`).
+- A tiny gold dataset lives at `data/test_jurisdictions.json` for future metrics expansion.
 - Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
 - Vector stats: `python -m app.scripts.vector_maint stats` (reports total and unique docs).
 - Configure doc store via env:

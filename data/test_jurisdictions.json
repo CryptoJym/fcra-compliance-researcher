@@ -1,0 +1,16 @@
+[
+  {
+    "jurisdiction_path": "unified/city/sample.json",
+    "expected": {
+      "ban_the_box": {"applies": false},
+      "citations": {"laws": []}
+    }
+  },
+  {
+    "jurisdiction_path": "unified/state/xy.json",
+    "expected": {
+      "ban_the_box": {"applies": true}
+    }
+  }
+]
+
