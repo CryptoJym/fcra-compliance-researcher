@@ -14,6 +14,8 @@ class ResearchState(TypedDict, total=False):
     output: str
     citations: List[Dict[str, Any]]
     needs_refine: bool
+    hops: int
+    jurisdiction_path: str
 
 
 def _try_import_langgraph():
@@ -79,7 +81,11 @@ def build_agent():
         provider = get_default_search_provider()
         docs: List[Dict[str, Any]] = []
         for q in state.get("sub_queries", []) or []:
-            for r in provider.search(q, num_results=5):
+            try:
+                results = _with_timeout(provider.search, q, num_results=5)
+            except Exception:
+                results = []
+            for r in results:
                 docs.append({"url": r.url, "title": r.title, "snippet": r.snippet})
         return {"docs": docs}
 
@@ -93,15 +99,9 @@ def build_agent():
                 if url in _crawl_cache:
                     extracted.append(_crawl_cache[url])
                 else:
-                    start = time.monotonic()
-                    timeout_s = float(os.getenv("DEEP_NODE_TIMEOUT_S", "20"))
-                    res = fetch_and_extract(url)
-                    if time.monotonic() - start <= timeout_s:
-                        _crawl_cache[url] = res
-                        extracted.append(res)
-                    else:
-                        # Timeout guard: skip
-                        continue
+                    res = _with_timeout(fetch_and_extract, url)
+                    _crawl_cache[url] = res
+                    extracted.append(res)
             except Exception:
                 continue
         return {"docs": extracted}
@@ -118,14 +118,20 @@ def build_agent():
         return a.get("claim") and b.get("claim") and a["claim"] != b["claim"]
 
     def validate_node(state: ResearchState) -> ResearchState:
-        facts = state.get("facts", []) or []
-        validated = []
-        for f in facts:
-            if not any(_conflicts(f, other) for other in facts if other is not f):
-                validated.append(f)
-        threshold = float(os.getenv("DEEP_COVERAGE_THRESHOLD", "0.8"))
-        needs_refine = len(validated) < max(1, int(threshold * len(facts) or 1))
-        return {"validated_facts": validated, "needs_refine": needs_refine}
+        def _do_validate() -> ResearchState:
+            facts = state.get("facts", []) or []
+            validated: List[Dict[str, Any]] = []
+            for f in facts:
+                if not any(_conflicts(f, other) for other in facts if other is not f):
+                    validated.append(f)
+            threshold = float(os.getenv("DEEP_COVERAGE_THRESHOLD", "0.8"))
+            needs_refine = len(validated) < max(1, int(threshold * len(facts) or 1))
+            return {"validated_facts": validated, "needs_refine": needs_refine}
+
+        try:
+            return _with_timeout(_do_validate)
+        except Exception:
+            return {"validated_facts": state.get("facts", []) or [], "needs_refine": False}
 
     def synthesize_node(state: ResearchState) -> ResearchState:
         if llm_large is not None:
@@ -146,11 +152,31 @@ def build_agent():
             upsert_docs(docs)
         except Exception:
             pass
-        return {"citations": citations}
+        # Best-effort provenance + confidence
+        try:
+            from .provenance import record_provenance
+            jpath = state.get("jurisdiction_path") or ""
+            for c in citations:
+                src = c.get("source")
+                if isinstance(src, str) and jpath:
+                    record_provenance(jpath, "unknown", src, c.get("claim") or "")
+        except Exception:
+            pass
+        try:
+            from .cross_validation import confidence_from_citations
+            urls = [c.get("source") for c in citations if isinstance(c, dict)]
+            conf = confidence_from_citations([u for u in urls if isinstance(u, str)])
+        except Exception:
+            conf = {"score": 0.0}
+        return {"citations": citations, "confidence": conf}
 
     def decide_to_loop(source_node: str, state: ResearchState) -> str:
+        max_hops = int(os.getenv("DEEP_MAX_HOPS", "3"))
+        hops = int(state.get("hops", 0) or 0)
+        if hops >= max_hops:
+            return "synthesize"
         if state.get("needs_refine"):
-            return "plan"
+            return "inc_hops"
         return "synthesize"
 
     graph = StateGraph(ResearchState)
@@ -167,7 +193,14 @@ def build_agent():
     graph.add_edge("search", "crawl")
     graph.add_edge("crawl", "extract")
     graph.add_edge("extract", "validate")
-    graph.add_conditional_edges("validate", decide_to_loop, {"plan": "plan", "synthesize": "synthesize"})
+    def _increment_hops(state: ResearchState) -> ResearchState:
+        new_state: Dict[str, Any] = dict(state)
+        new_state["hops"] = int(state.get("hops", 0) or 0) + 1
+        return new_state  # type: ignore[return-value]
+
+    graph.add_node("inc_hops", _increment_hops)
+    graph.add_conditional_edges("validate", decide_to_loop, {"inc_hops": "inc_hops", "synthesize": "synthesize"})
+    graph.add_edge("inc_hops", "plan")
     graph.add_edge("synthesize", "cite")
     graph.add_edge("cite", END)
 
