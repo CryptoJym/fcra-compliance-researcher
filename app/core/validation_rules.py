@@ -78,3 +78,28 @@ def run_internal_checks(patch_path: Path, jurisdiction_path: str, auto_fix_preem
     ok = len(errors) == 0
     details = {"errors": errors, "notes": notes}
     return ok, details
+
+
+def detect_contradictions(facts: List[Dict[str, Any]]) -> List[Tuple[Dict[str, Any], Dict[str, Any]]]:
+    """Very simple contradiction detection: pairs with same source but differing claims.
+
+    This is a placeholder to surface conflicts to the orchestration layer.
+    """
+    conflicts: List[Tuple[Dict[str, Any], Dict[str, Any]]] = []
+    by_source: Dict[str, List[Dict[str, Any]]] = {}
+    for f in facts or []:
+        src = str(f.get("source") or "")
+        if not src:
+            continue
+        by_source.setdefault(src, []).append(f)
+    for _, group in by_source.items():
+        claims: Dict[str, Dict[str, Any]] = {}
+        for f in group:
+            c = f.get("claim")
+            if c is None:
+                continue
+            for seen, fact in claims.items():
+                if seen != c:
+                    conflicts.append((fact, f))
+            claims[c] = f
+    return conflicts

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.core.validation_rules import check_citations, check_required_fields, maybe_infer_preemption, run_internal_checks
+from app.core.validation_rules import check_citations, check_required_fields, maybe_infer_preemption, run_internal_checks, detect_contradictions
 
 
 def test_required_and_citations(tmp_path: Path):
@@ -32,3 +32,14 @@ def test_infer_preemption(tmp_path: Path):
     assert ok
     updated = json.loads(p.read_text())
     assert updated.get("preemptions", {}).get("preempted_by") == ["state"]
+
+
+def test_detect_contradictions():
+    facts = [
+        {"source": "http://a", "claim": "X"},
+        {"source": "http://a", "claim": "Y"},
+        {"source": "http://b", "claim": "X"},
+        {"source": "http://b", "claim": "X"},
+    ]
+    conflicts = detect_contradictions(facts)
+    assert any(isinstance(t, tuple) and len(t) == 2 for t in conflicts)
