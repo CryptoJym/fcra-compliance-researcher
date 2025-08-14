@@ -22,7 +22,11 @@ class Settings(BaseSettings):
         seed("OPENAI_BASE_URL", sp.get("OPENAI_BASE_URL"))
         seed("PERPLEXITY_API_KEY", sp.get("PERPLEXITY_API_KEY"))
         super().__init__(**values)
-    model_config = SettingsConfigDict(env_file=Path(__file__).resolve().parents[2] / ".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[2] / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_env: str = "development"
     log_level: str = "INFO"
@@ -46,6 +50,9 @@ class Settings(BaseSettings):
     enable_live_llm: bool = False
 
     dashboard_port: int = 8000
+    # Tests and utilities may set these envs; accept them to avoid validation errors
+    project_root_override: str | None = None  # maps from PROJECT_ROOT_OVERRIDE
+    dash_auth_disabled: bool = False  # maps from DASH_AUTH_DISABLED
 
     # Throttling
     requests_per_second: int | None = 2

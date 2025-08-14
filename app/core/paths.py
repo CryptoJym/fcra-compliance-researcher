@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 
 
 def project_root() -> Path:
+    # Allow tests to override via env without importing settings (avoid circular deps during import time)
+    override = os.getenv("PROJECT_ROOT_OVERRIDE")
+    if override:
+        return Path(override)
     return Path(__file__).resolve().parents[2]
 
 
