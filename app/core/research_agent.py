@@ -54,11 +54,20 @@ def build_agent():
             llm_small = None
             llm_large = None
 
+    def _with_timeout(fn, *args, **kwargs):
+        # Soft timeout via monotonic check; called by nodes
+        start = time.monotonic()
+        limit = float(os.getenv("DEEP_NODE_TIMEOUT_S", "20"))
+        result = fn(*args, **kwargs)
+        if time.monotonic() - start > limit:
+            raise TimeoutError("node exceeded timeout")
+        return result
+
     def plan_node(state: ResearchState) -> ResearchState:
         query = state.get("query", "")
         if llm_small is not None:
             try:
-                plan_text = llm_small.invoke(f"Decompose query into 2-3 FCRA sub-queries: {query}")
+                plan_text = _with_timeout(llm_small.invoke, f"Decompose query into 2-3 FCRA sub-queries: {query}")
                 sub_queries = [s.strip("- ") for s in str(plan_text).splitlines() if s.strip()][:3]
             except Exception:
                 sub_queries = [query]
@@ -121,7 +130,7 @@ def build_agent():
     def synthesize_node(state: ResearchState) -> ResearchState:
         if llm_large is not None:
             try:
-                text = llm_large.invoke(f"Synthesize FCRA compliance from facts: {state.get('validated_facts', [])}")
+                text = _with_timeout(llm_large.invoke, f"Synthesize FCRA compliance from facts: {state.get('validated_facts', [])}")
                 return {"output": str(text)}
             except Exception:
                 pass

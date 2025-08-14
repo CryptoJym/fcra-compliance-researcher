@@ -8,6 +8,7 @@ def test_build_agent_optional_imports():
     from app.core.research_agent import build_agent
 
     os.environ["DEEP_COVERAGE_THRESHOLD"] = "0.8"
+    os.environ["DEEP_MAX_HOPS"] = "2"
     agent = build_agent()
     assert agent is None or hasattr(agent, "invoke")
 
