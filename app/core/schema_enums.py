@@ -7,9 +7,9 @@ from typing import Dict, List
 
 # Fallback constants. Replace/augment by reading schema docs if provided.
 FALLBACK_ENUMS: Dict[str, List[str]] = {
-    "ban_the_box.timing.stage": ["application", "interview", "conditional_offer", "post_offer"],
-    "notice_requirements.pre_adverse.required": ["always", "sometimes", "never"],
-    "notice_requirements.adverse.required": ["always", "sometimes", "never"],
+    "metadata.jurisdiction_type": ["federal", "state", "county", "city", "industry"],
+    "ban_the_box.timing.stage": ["application", "interview", "conditional_offer"],
+    "criminal_history.restrictions.arrests": ["never_report", "case_by_case", "report_anytime", "unknown"],
 }
 
 

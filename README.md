@@ -11,6 +11,7 @@ Architecture
 - State: SQLite DB for run logs and metrics; JSON queue for task scheduling.
 - Dashboard: FastAPI + Jinja template for recent runs.
 - See `docs/architecture.md` for the detailed diagram and components.
+- Data contract: see `docs/SCHEMA_SPECIFICATION.md` for required fields, enums, merge rules, and provenance format.
 
 Getting started
 1) Setup environment
