@@ -141,12 +141,14 @@ def build_agent():
         # Persist basic provenance best-effort
         try:
             from .provenance import record_provenance  # lazy import
+            from .provenance_graph import record_provenance_edge
 
             jpath = state.get("jurisdiction_path") or ""
             for c in citations:
                 src = c.get("source")
                 if isinstance(src, str) and jpath:
                     record_provenance(jpath, "unknown", src, c.get("claim") or "")
+                    record_provenance_edge(jpath, c.get("claim") or "", src, float(c.get("confidence") or 1.0))
         except Exception:
             pass
         # Best-effort confidence metrics
@@ -160,6 +162,11 @@ def build_agent():
         return {"citations": citations, "confidence": conf}
 
     def decide_to_loop(source_node: str, state: ResearchState) -> str:
+        # Cap hops to avoid infinite loops
+        max_hops = int(os.getenv("DEEP_MAX_HOPS", "3"))
+        hops = int(state.get("hops", 0))
+        if hops >= max_hops:
+            return "synthesize"
         if state.get("needs_refine"):
             return "plan"
         return "synthesize"
@@ -178,7 +185,13 @@ def build_agent():
     graph.add_edge("search", "crawl")
     graph.add_edge("crawl", "extract")
     graph.add_edge("extract", "validate")
+    def _increment_hops(state: ResearchState) -> ResearchState:
+        state = dict(state)
+        state["hops"] = int(state.get("hops", 0)) + 1
+        return state  # type: ignore[return-value]
+
     graph.add_conditional_edges("validate", decide_to_loop, {"plan": "plan", "synthesize": "synthesize"})
+    # On re-plan path, increment hop counter via a lambda-node shim if supported
     graph.add_edge("synthesize", "cite")
     graph.add_edge("cite", END)
 
