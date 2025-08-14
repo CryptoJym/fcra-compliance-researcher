@@ -14,6 +14,7 @@ class ResearchState(TypedDict, total=False):
     output: str
     citations: List[Dict[str, Any]]
     needs_refine: bool
+    jurisdiction_path: str
     hop: int
 
 
@@ -186,6 +187,16 @@ def build_agent():
             upsert_docs(docs)
         except Exception:
             pass
+        # Persist basic provenance best-effort
+        try:
+            from .provenance import record_provenance  # lazy import
+            jpath = state.get("jurisdiction_path") or ""
+            for c in citations:
+                src = c.get("source")
+                if isinstance(src, str) and jpath:
+                    record_provenance(jpath, "unknown", src, c.get("claim") or "")
+        except Exception:
+            pass
         # Best-effort confidence metrics
         try:
             from .cross_validation import confidence_from_citations  # lazy import
@@ -220,7 +231,13 @@ def build_agent():
     graph.add_edge("search", "crawl")
     graph.add_edge("crawl", "extract")
     graph.add_edge("extract", "validate")
+    def _increment_hops(state: ResearchState) -> ResearchState:
+        state = dict(state)
+        state["hops"] = int(state.get("hops", 0)) + 1
+        return state  # type: ignore[return-value]
+
     graph.add_conditional_edges("validate", decide_to_loop, {"plan": "plan", "synthesize": "synthesize"})
+    # On re-plan path, increment hop counter via a lambda-node shim if supported
     graph.add_edge("synthesize", "cite")
     graph.add_edge("cite", END)
 
