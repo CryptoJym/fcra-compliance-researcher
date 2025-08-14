@@ -25,3 +25,4 @@ def test_redact_secrets():
     assert "api_key=***" in red and "token=***" in red
 
 
+
