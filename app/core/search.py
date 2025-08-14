@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import os
 from dataclasses import dataclass
+from time import sleep
 from typing import List, Optional
 
 import httpx
@@ -122,31 +123,42 @@ def get_default_search_provider() -> SearchProvider:
             class SearxngProvider(SearchProvider):
                 def __init__(self, base_url: str):
                     self.base_url = base_url.rstrip("/")
+                    # Basic rate limiting & retry controls via env
+                    self.max_attempts = int(os.getenv("SEARXNG_MAX_ATTEMPTS", "3"))
+                    self.min_backoff = float(os.getenv("SEARXNG_MIN_BACKOFF", "0.5"))
+                    self.max_backoff = float(os.getenv("SEARXNG_MAX_BACKOFF", "4.0"))
 
                 def search(self, query: str, num_results: int = 5) -> List[SearchResult]:
-                    full_query = f"{query} site:gov filetype:pdf"
-                    try:
-                        resp = httpx.get(
-                            f"{self.base_url}/search",
-                            params={"q": full_query, "format": "json"},
-                            timeout=20,
-                        )
-                        if resp.status_code != 200:
-                            return []
-                        data = resp.json()
-                        results = []
-                        for it in (data.get("results") or [])[: num_results]:
-                            results.append(
-                                SearchResult(
-                                    url=it.get("url"),
-                                    title=it.get("title", ""),
-                                    snippet=it.get("content", ""),
-                                )
+                    full_query = f"{query} site:gov OR site:us OR site:*.state.* filetype:pdf OR filetype:html"
+                    attempt = 0
+                    backoff = self.min_backoff
+                    while attempt < self.max_attempts:
+                        attempt += 1
+                        try:
+                            resp = httpx.get(
+                                f"{self.base_url}/search",
+                                params={"q": full_query, "format": "json"},
+                                timeout=20,
                             )
-                        return results
-                    except Exception as e:
-                        logger.error(f"SearXNG error: {e}")
-                        return []
+                            if resp.status_code != 200:
+                                raise RuntimeError(f"HTTP {resp.status_code}")
+                            data = resp.json()
+                            results = []
+                            for it in (data.get("results") or [])[: num_results]:
+                                results.append(
+                                    SearchResult(
+                                        url=it.get("url"),
+                                        title=it.get("title", ""),
+                                        snippet=it.get("content", ""),
+                                    )
+                                )
+                            return results
+                        except Exception as e:
+                            if attempt >= self.max_attempts:
+                                logger.error(f"SearXNG error after {attempt} attempts: {e}")
+                                return []
+                            sleep(backoff)
+                            backoff = min(self.max_backoff, backoff * 2)
 
             return SearxngProvider(searxng_url)
         except Exception:

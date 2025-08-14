@@ -89,3 +89,16 @@ async def review_page(_: bool = Depends(require_basic_auth)):
     template = TEMPLATES.get_template("review.html")
     html = template.render(rows=rows, status_filter="needs_review")
     return HTMLResponse(html)
+
+
+@app.get("/eval")
+async def eval_page(_: bool = Depends(require_basic_auth)):
+    # call API to reuse logic
+    from fastapi.testclient import TestClient
+
+    client = TestClient(app)
+    resp = client.get("/api/eval")
+    data = resp.json() if resp.status_code == 200 else {"total_recent": 0, "completed": 0, "errors": 0, "avg_duration_sec": 0}
+    template = TEMPLATES.get_template("eval.html")
+    html = template.render(**data)
+    return HTMLResponse(html)

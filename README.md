@@ -81,7 +81,9 @@ Progress tracker
 
 Deployment
 - Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
- - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
+- Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
+  - Healthchecks and resource limits are configured for both services.
+  - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`, `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`.
 - Reindex vectors: `python -m app.scripts.vector_maint reindex` (uses `settings.vector_db_path`).
 - Vector stats: `python -m app.scripts.vector_maint stats` (reports total and unique docs).
 - Configure doc store via env:

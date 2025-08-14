@@ -44,8 +44,9 @@
       </label>
       <button type="submit">Apply</button>
     </form>
-    <div style="margin-left:auto;">
+    <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
       <strong>Completed:</strong> {{ counts.completed or 0 }} / {{ counts.completed + counts.in_progress + counts.pending + counts.error }} ({{ percent }}%)
+      <a class="pill" href="/eval">Evaluation</a>
     </div>
   </div>
   <table>

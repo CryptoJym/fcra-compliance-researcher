@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>FCRA Researcher - Evaluation</title>
+  <style>
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 24px; }
+    h1 { font-size: 22px; }
+    .card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 16px; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .muted { color: #6b7280; }
+  </style>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  </head>
+<body>
+  <h1>Evaluation Summary</h1>
+  <div class="grid">
+    <div class="card">
+      <div class="muted">Total (recent)</div>
+      <div style="font-size:24px">{{ total_recent }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Completed</div>
+      <div style="font-size:24px">{{ completed }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Errors</div>
+      <div style="font-size:24px">{{ errors }}</div>
+    </div>
+    <div class="card">
+      <div class="muted">Avg Duration (s)</div>
+      <div style="font-size:24px">{{ avg_duration_sec }}</div>
+    </div>
+  </div>
+  <p><a href="/">Back to Dashboard</a></p>
+</body>
+</html>
+
