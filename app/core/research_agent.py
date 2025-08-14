@@ -137,7 +137,15 @@ def build_agent():
             upsert_docs(docs)
         except Exception:
             pass
-        return {"citations": citations}
+        # Best-effort confidence metrics
+        try:
+            from .cross_validation import confidence_from_citations  # lazy import
+
+            urls = [c.get("source") for c in citations if isinstance(c, dict)]
+            conf = confidence_from_citations([u for u in urls if isinstance(u, str)])
+        except Exception:
+            conf = {"score": 0.0}
+        return {"citations": citations, "confidence": conf}
 
     def decide_to_loop(source_node: str, state: ResearchState) -> str:
         if state.get("needs_refine"):
