@@ -30,3 +30,4 @@ def test_schema_and_vector_tools_work_together(tmp_path: Path):
     assert "docs" in stats and "unique" in stats
 
 
+
