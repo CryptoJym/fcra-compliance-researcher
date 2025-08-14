@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from pathlib import Path
 
 from ..core.queue import ResearchQueue
+from ..core.db import get_engine, JurisdictionRun
+from sqlalchemy.orm import Session
 from ..core.types import ResearchTask
 from ..core.paths import project_root
 from datetime import datetime, UTC
@@ -59,3 +61,26 @@ async def get_logs(trace_id: str):
         except Exception:
             continue
     return JSONResponse({"trace_id": trace_id, "events": events})
+
+
+@router.get("/eval")
+async def get_eval():
+    """Return a minimal evaluation aggregate from recent runs."""
+    engine = get_engine()
+    with Session(engine) as session:
+        runs = session.query(JurisdictionRun).order_by(JurisdictionRun.started_at.desc()).limit(200).all()
+    total = len(runs)
+    completed = sum(1 for r in runs if r.status == "completed")
+    errors = sum(1 for r in runs if r.status == "error")
+    durations = []
+    from datetime import datetime
+    for r in runs:
+        if isinstance(r.started_at, datetime) and isinstance(r.completed_at, datetime) and r.completed_at:
+            durations.append((r.completed_at - r.started_at).total_seconds())
+    avg_duration = round(sum(durations) / len(durations), 2) if durations else 0.0
+    return JSONResponse({
+        "total_recent": total,
+        "completed": completed,
+        "errors": errors,
+        "avg_duration_sec": avg_duration,
+    })

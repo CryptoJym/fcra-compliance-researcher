@@ -44,3 +44,18 @@ def test_dashboard_index_renders_with_duration(tmp_path: Path, monkeypatch):
     assert "1.5s" in html
 
 
+def test_eval_endpoint_json(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/test.db")
+    engine = get_engine(settings.database_url)
+    Base.metadata.drop_all(engine)
+    Base.metadata.create_all(engine)
+    with Session(engine) as session:
+        session.add(JurisdictionRun(jurisdiction_path="unified/city/sample.json", status="completed"))
+        session.commit()
+    monkeypatch.setenv("DASH_AUTH_DISABLED", "1")
+    client = TestClient(app)
+    resp = client.get("/api/eval")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert set(["total_recent", "completed", "errors", "avg_duration_sec"]).issubset(data.keys())
+
