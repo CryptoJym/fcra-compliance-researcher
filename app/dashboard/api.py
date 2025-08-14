@@ -85,3 +85,24 @@ async def get_eval():
         "errors": errors,
         "avg_duration_sec": avg_duration,
     })
+
+
+@router.get("/provenance")
+async def get_provenance(jurisdiction_path: str):
+    """Return stored provenance rows for a jurisdiction (field-level citations)."""
+    engine = get_engine(settings.database_url)
+    with Session(engine) as session:
+        rows = session.execute(
+            "SELECT jurisdiction_path, field_path, source_url, snippet FROM provenance WHERE jurisdiction_path = :p",
+            {"p": jurisdiction_path},
+        ).fetchall()
+    items = [
+        {
+            "jurisdiction_path": r[0],
+            "field_path": r[1],
+            "source_url": r[2],
+            "snippet": r[3],
+        }
+        for r in rows
+    ]
+    return JSONResponse({"jurisdiction_path": jurisdiction_path, "count": len(items), "items": items})
