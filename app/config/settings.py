@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     enable_live_llm: bool = False
 
     dashboard_port: int = 8000
+    research_scope: str = "FCRA"  # FCRA or CRA
     # Tests and utilities may set these envs; accept them to avoid validation errors
     project_root_override: str | None = None  # maps from PROJECT_ROOT_OVERRIDE
     dash_auth_disabled: bool = False  # maps from DASH_AUTH_DISABLED

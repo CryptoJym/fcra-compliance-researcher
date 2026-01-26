@@ -8,6 +8,10 @@ from typing import Any, Dict, List, Tuple
 from .cross_validation import confidence_metrics
 
 
+def _scope() -> str:
+    return os.getenv("RESEARCH_SCOPE", "FCRA").strip().upper()
+
+
 def load_patch(patch_path: Path) -> Dict[str, Any]:
     return json.loads(patch_path.read_text())
 
@@ -42,6 +46,8 @@ def check_primary_citations(patch: Dict[str, Any]) -> Tuple[List[str], List[str]
     criminal_restrictions = (patch or {}).get("criminal_history", {}).get("restrictions")
     if criminal_restrictions and not has_laws:
         errors.append("criminal_history.restrictions requires citations.laws entries")
+    if _scope() == "CRA" and not criminal_restrictions:
+        errors.append("CRA scope requires criminal_history.restrictions")
 
     try:
         min_authority = float(os.getenv("CITATION_MIN_AUTHORITY", "0") or "0")

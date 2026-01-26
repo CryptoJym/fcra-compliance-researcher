@@ -50,3 +50,17 @@ def test_criminal_history_requires_citations(tmp_path: Path):
     ok, details = run_internal_checks(p, "unified/state/test.json")
     assert not ok
     assert any("criminal_history.restrictions" in e for e in details["errors"])
+
+
+def test_cra_scope_requires_criminal_history(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("RESEARCH_SCOPE", "CRA")
+    patch = {
+        "jurisdiction": "unified/state/test.json",
+        "last_updated": "2024-01-01",
+        "citations": {"laws": ["https://example.gov/abc"]},
+    }
+    p = tmp_path / "patch.json"
+    p.write_text(json.dumps(patch))
+    ok, details = run_internal_checks(p, "unified/state/test.json")
+    assert not ok
+    assert any("CRA scope requires criminal_history.restrictions" in e for e in details["errors"])

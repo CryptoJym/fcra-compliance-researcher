@@ -20,12 +20,27 @@ from ..core.vector_store import VectorStore
 from ..core.schema_enums import get_allowed_enums
 
 
-EXTRACTION_PROMPT = """
+EXTRACTION_PROMPT_FCRA = """
 You are an expert FCRA compliance researcher. Using the provided context passages, extract values for each field in the FCRA Compliance Matrix schema v1.
 - Use only allowed enum values. If unknown or not found, set null.
 - Do not change jurisdiction_code or jurisdiction_type.
 - Include citations with URLs and page anchors for each populated field.
 Return a JSON object following the schema strictly.
+
+Jurisdiction: {jurisdiction}
+Allowed enums: {allowed_enums}
+
+Context:
+{context}
+"""
+
+EXTRACTION_PROMPT_CRA = """
+You are a CRA-only compliance researcher. Extract ONLY CRA-relevant criminal history reporting rules:
+- criminal_history.restrictions (arrests, convictions, non-convictions)
+- preemptions (if applicable)
+- citations (laws/regulations/cases) supporting any populated field
+Ignore ban-the-box and employer-side obligations. If unknown, set null.
+Return a JSON object following the schema strictly, but you may leave non-CRA sections empty.
 
 Jurisdiction: {jurisdiction}
 Allowed enums: {allowed_enums}
@@ -65,7 +80,10 @@ class ExtractionAgent(Agent):
 
     def run(self, jurisdiction: str, schema_skeleton: Dict[str, Any]):
         context = self._retrieve_context(jurisdiction)
-        prompt = ChatPromptTemplate.from_template(EXTRACTION_PROMPT)
+        prompt_template = EXTRACTION_PROMPT_FCRA
+        if settings.research_scope.strip().upper() == "CRA":
+            prompt_template = EXTRACTION_PROMPT_CRA
+        prompt = ChatPromptTemplate.from_template(prompt_template)
         message = prompt.format_messages(
             jurisdiction=jurisdiction,
             allowed_enums=json.dumps(self._allowed_enums()),
