@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://vuplicity.ai/schema/cra-matrix/v1",
+  "title": "CRA Compliance Matrix Patch (CRA-only)",
+  "type": "object",
+  "required": ["schema_version", "jurisdiction", "last_updated", "criminal_history"],
+  "properties": {
+    "schema_version": { "type": "string", "const": "v1" },
+    "jurisdiction": { "type": "string", "minLength": 1 },
+    "last_updated": { "type": "string", "minLength": 1 },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "jurisdiction_type": {
+          "type": "string",
+          "enum": ["federal", "state", "county", "city", "industry"]
+        },
+        "jurisdiction_code": { "type": "string" },
+        "jurisdiction_name": { "type": "string" },
+        "last_updated": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "criminal_history": {
+      "type": "object",
+      "required": ["restrictions"],
+      "properties": {
+        "restrictions": {
+          "type": "object",
+          "properties": {
+            "arrests": {
+              "type": ["string", "null"],
+              "enum": ["never_report", "case_by_case", "report_anytime", "unknown", null]
+            },
+            "convictions": {
+              "type": ["object", "null"],
+              "properties": {
+                "lookback_years": { "type": ["number", "null"] },
+                "salary_exception": { "type": ["number", "null"] },
+                "types_excluded": {
+                  "type": ["array", "null"],
+                  "items": { "type": "string" }
+                }
+              },
+              "additionalProperties": true
+            },
+            "non_convictions": {
+              "type": ["object", "null"],
+              "properties": {
+                "lookback_years": { "type": ["number", "null"] },
+                "salary_exception": { "type": ["number", "null"] }
+              },
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "preemptions": {
+      "type": "object",
+      "properties": {
+        "preempted_by": { "type": "array", "items": { "type": "string" } },
+        "preempts": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "citations": {
+      "type": "object",
+      "properties": {
+        "laws": { "type": "array", "items": { "type": "string" } },
+        "regulations": { "type": "array", "items": { "type": "string" } },
+        "cases": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

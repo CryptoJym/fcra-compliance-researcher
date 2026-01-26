@@ -13,6 +13,7 @@ from app.core.validation_rules import (
 
 def test_required_and_citations(tmp_path: Path):
     patch = {
+        "schema_version": "v1",
         "jurisdiction": "unified/city/test.json",
         "ban_the_box": {"applies": True},
         "citations": {"laws": []},
@@ -26,6 +27,7 @@ def test_required_and_citations(tmp_path: Path):
 
 def test_infer_preemption(tmp_path: Path):
     patch = {
+        "schema_version": "v1",
         "jurisdiction": "unified/city/test.json",
         "ban_the_box": {"applies": False},
         "citations": {"laws": ["https://example.state.codes/abc"]},
@@ -41,6 +43,7 @@ def test_infer_preemption(tmp_path: Path):
 
 def test_criminal_history_requires_citations(tmp_path: Path):
     patch = {
+        "schema_version": "v1",
         "jurisdiction": "unified/state/test.json",
         "last_updated": "2024-01-01",
         "criminal_history": {"restrictions": {"convictions": {"lookback_years": 7}}},
@@ -55,6 +58,7 @@ def test_criminal_history_requires_citations(tmp_path: Path):
 def test_cra_scope_requires_criminal_history(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("RESEARCH_SCOPE", "CRA")
     patch = {
+        "schema_version": "v1",
         "jurisdiction": "unified/state/test.json",
         "last_updated": "2024-01-01",
         "citations": {"laws": ["https://example.gov/abc"]},

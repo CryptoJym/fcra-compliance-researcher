@@ -1,6 +1,7 @@
 ## Data Contract: FCRA Compliance Matrix (Schema v1)
 
 This repository produces and updates jurisdiction files that conform to the upstream schema located at `upstream/fcra-compliance-matrix/schema/v1.json`.
+For CRA-only work, the canonical JSON schema lives at `schema/cra-matrix.schema.json`.
 
 ### Required Top-Level Structure
 - `schema_version`: "v1"
@@ -81,5 +82,4 @@ This repository produces and updates jurisdiction files that conform to the upst
   "citations": { "laws": ["SF Police Code Art. 49"] }
 }
 ```
-
 

@@ -20,6 +20,10 @@ def get_allowed_enums() -> Dict[str, List[str]]:
     JSON format: { "field.path": ["val1", "val2"] }
     """
     path = os.getenv("SCHEMA_ENUMS_PATH")
+    if not path and os.getenv("RESEARCH_SCOPE", "FCRA").strip().upper() == "CRA":
+        candidate = Path(__file__).resolve().parents[2] / "schema" / "cra-enums.json"
+        if candidate.exists():
+            path = str(candidate)
     if path:
         try:
             data = json.loads(Path(path).read_text())

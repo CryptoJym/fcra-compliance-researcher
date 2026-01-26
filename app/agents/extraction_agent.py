@@ -92,6 +92,7 @@ class ExtractionAgent(Agent):
         if self.llm is None:
             # Offline mode: return skeleton only
             data = dict(schema_skeleton)
+            data.setdefault("schema_version", "v1")
             data["last_updated"] = datetime.now(UTC).date().isoformat()
             return data
 
@@ -100,5 +101,6 @@ class ExtractionAgent(Agent):
             data = json.loads(response.content)
         except Exception:
             data = dict(schema_skeleton)
+        data.setdefault("schema_version", "v1")
         data["last_updated"] = datetime.now(UTC).date().isoformat()
         return data

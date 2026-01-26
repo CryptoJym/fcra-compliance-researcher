@@ -132,8 +132,10 @@ Operational notes
 - Offline mode: When no OpenAI API key is set, extraction returns a skeleton JSON with `last_updated` and vector store uses local hash embeddings.
 - Persistence: Run logs are stored in SQLite (`DATABASE_URL`).
 - Safety: Validation and merge agents call external scripts expected from the upstream repo; until wired, they are placeholders.
-- CRA-only mode: set `RESEARCH_SCOPE=CRA` to focus extraction + validation on criminal history reporting rules only (ban-the-box and employer-side obligations omitted).
+- CRA-only mode: set `RESEARCH_SCOPE=CRA` to focus extraction + validation on criminal history reporting rules only (ban-the-box and employer-side obligations omitted). The `.env.example` defaults to CRA scope.
 - OCR: `fetch_and_extract` sets `meta.ocr_engine` when OCR is used (`google_document_ai`, `google_vision`, or `unstructured:<strategy>`).
+- Schema validation: set `SCHEMA_PATH` to a JSON schema (defaults to `schema/cra-matrix.schema.json` for CRA scope).
+- Enum validation: set `SCHEMA_ENUMS_PATH` to a JSON file mapping enum paths to allowed values (CRA defaults to `schema/cra-enums.json`).
 
 Contributing
 - Run `pytest` before pushing. Keep code readable and typed.

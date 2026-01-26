@@ -1,0 +1,4 @@
+{
+  "metadata.jurisdiction_type": ["federal", "state", "county", "city", "industry"],
+  "criminal_history.restrictions.arrests": ["never_report", "case_by_case", "report_anytime", "unknown"]
+}

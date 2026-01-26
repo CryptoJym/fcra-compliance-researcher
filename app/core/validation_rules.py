@@ -63,7 +63,7 @@ def check_primary_citations(patch: Dict[str, Any]) -> Tuple[List[str], List[str]
     return errors, notes
 
 
-essential_fields = ["jurisdiction", "last_updated"]
+essential_fields = ["schema_version", "jurisdiction", "last_updated"]
 
 
 def check_required_fields(patch: Dict[str, Any]) -> List[str]:

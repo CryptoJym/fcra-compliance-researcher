@@ -38,6 +38,7 @@ dependencies = [
   "tenacity>=8.5.0",
   "openai>=1.37.0",
   "filelock>=3.14.0",
+  "jsonschema>=4.23.0",
 ]
 
 [project.optional-dependencies]
