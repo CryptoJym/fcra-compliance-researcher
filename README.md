@@ -82,7 +82,10 @@ Deployment
 - Local: `docker compose up -d` brings up `dashboard`, `redis`, and `worker`.
 - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
   - Healthchecks and resource limits are configured for both services.
-  - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`, `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`.
+  - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`,
+    `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`, `CRAWL_USE_FIRECRAWL`, `FIRECRAWL_API_KEY`, `FIRECRAWL_BASE_URL`,
+    `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_DOCUMENT_AI_PROCESSOR_ID`,
+    `GOOGLE_DOCUMENT_AI_PROCESSOR_VERSION`, `GOOGLE_APPLICATION_CREDENTIALS`.
   - Deep orchestration knobs:
     - `DEEP_NODE_TIMEOUT_S`: default soft timeout for nodes (seconds)
     - `DEEP_SEARCH_TIMEOUT_S`: override for search node
@@ -102,6 +105,7 @@ Deployment
 
 Deep research setup (optional)
 - Install extras: `pip install -e .[deep]`
+- Optional OCR extras: `pip install -e .[google_ocr]` (Document AI / Vision)
 - Bring up services: `docker compose up -d qdrant searxng`
 - Set env:
   - `SEARXNG_URL=http://localhost:8080`

@@ -55,6 +55,10 @@ deep = [
   "ragas>=0.1.10",
   "datasets>=2.20.0",
 ]
+google_ocr = [
+  "google-cloud-documentai>=2.20.0",
+  "google-cloud-vision>=3.4.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
