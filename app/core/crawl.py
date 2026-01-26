@@ -171,7 +171,7 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
         raise PermissionError("Blocked by robots.txt")
     polite_delay(url)
 
-    prefer_google_ocr = os.getenv("CRAWL_PREFER_GOOGLE_OCR", "0") in ("1", "true", "True")
+    prefer_google_ocr = os.getenv("CRAWL_PREFER_GOOGLE_OCR", "1") in ("1", "true", "True")
 
     # Primary fetch with explicit UA
     downloaded = None
