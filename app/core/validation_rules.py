@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
+
+from .cross_validation import confidence_metrics
 
 
 def load_patch(patch_path: Path) -> Dict[str, Any]:
@@ -26,6 +29,32 @@ def check_citations(patch: Dict[str, Any]) -> List[str]:
         if not isinstance(laws, list) or len(laws) == 0:
             errors.append("When ban_the_box.applies is true, citations.laws must contain at least one source")
     return errors
+
+
+def check_primary_citations(patch: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+    errors: List[str] = []
+    notes: List[str] = []
+
+    citations = (patch or {}).get("citations") or {}
+    laws = citations.get("laws") if isinstance(citations, dict) else None
+    has_laws = isinstance(laws, list) and len(laws) > 0
+
+    criminal_restrictions = (patch or {}).get("criminal_history", {}).get("restrictions")
+    if criminal_restrictions and not has_laws:
+        errors.append("criminal_history.restrictions requires citations.laws entries")
+
+    try:
+        min_authority = float(os.getenv("CITATION_MIN_AUTHORITY", "0") or "0")
+    except Exception:
+        min_authority = 0.0
+    if min_authority > 0 and has_laws:
+        score = confidence_metrics(patch).get("overall", {}).get("score", 0)
+        if score < min_authority:
+            notes.append(
+                f"Low citation authority score ({score}) below minimum {min_authority}"
+            )
+
+    return errors, notes
 
 
 essential_fields = ["jurisdiction", "last_updated"]
@@ -67,6 +96,9 @@ def run_internal_checks(patch_path: Path, jurisdiction_path: str, auto_fix_preem
 
     errors.extend(check_required_fields(data))
     errors.extend(check_citations(data))
+    primary_errors, primary_notes = check_primary_citations(data)
+    errors.extend(primary_errors)
+    notes.extend(primary_notes)
 
     if auto_fix_preemption:
         new_data, pre_notes = maybe_infer_preemption(data, jurisdiction_path)

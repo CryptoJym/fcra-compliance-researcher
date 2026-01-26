@@ -3,7 +3,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.core.validation_rules import check_citations, check_required_fields, maybe_infer_preemption, run_internal_checks
+from app.core.validation_rules import (
+    check_citations,
+    check_required_fields,
+    maybe_infer_preemption,
+    run_internal_checks,
+)
 
 
 def test_required_and_citations(tmp_path: Path):
@@ -32,3 +37,16 @@ def test_infer_preemption(tmp_path: Path):
     assert ok
     updated = json.loads(p.read_text())
     assert updated.get("preemptions", {}).get("preempted_by") == ["state"]
+
+
+def test_criminal_history_requires_citations(tmp_path: Path):
+    patch = {
+        "jurisdiction": "unified/state/test.json",
+        "last_updated": "2024-01-01",
+        "criminal_history": {"restrictions": {"convictions": {"lookback_years": 7}}},
+    }
+    p = tmp_path / "patch.json"
+    p.write_text(json.dumps(patch))
+    ok, details = run_internal_checks(p, "unified/state/test.json")
+    assert not ok
+    assert any("criminal_history.restrictions" in e for e in details["errors"])
