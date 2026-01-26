@@ -171,6 +171,8 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
         raise PermissionError("Blocked by robots.txt")
     polite_delay(url)
 
+    prefer_google_ocr = os.getenv("CRAWL_PREFER_GOOGLE_OCR", "0") in ("1", "true", "True")
+
     # Primary fetch with explicit UA
     downloaded = None
     binary = None
@@ -190,6 +192,25 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
     except Exception as e:
         text = None
         downloaded = None
+
+    # If configured, prefer Google OCR for PDFs/images before other fallbacks
+    if prefer_google_ocr and binary and is_pdf_like and is_document_ai_configured():
+        try:
+            mime_type = content_type or "application/pdf"
+            ocr_text = extract_with_document_ai(binary, mime_type)
+            if ocr_text:
+                text = ocr_text
+                ocr_engine = "google_document_ai"
+        except Exception as e:
+            logger.warning(f"document ai failed url={url} err={e}")
+    if prefer_google_ocr and binary and url.lower().endswith((".jpg", ".jpeg", ".png")) and is_vision_configured():
+        try:
+            ocr_text = extract_with_vision(binary)
+            if ocr_text:
+                text = ocr_text
+                ocr_engine = "google_vision"
+        except Exception as e:
+            logger.warning(f"vision ocr failed url={url} err={e}")
 
     # Fallbacks when content is too short or likely PDF/image
     needs_fallback = not text or len(text or "") < threshold

@@ -83,7 +83,8 @@ Deployment
 - Deep research (optional): `docker compose up -d qdrant searxng` then set `SEARXNG_URL` and `QDRANT_URL` in `.env`.
   - Healthchecks and resource limits are configured for both services.
   - Env knobs: `SEARXNG_MAX_ATTEMPTS`, `SEARXNG_MIN_BACKOFF`, `SEARXNG_MAX_BACKOFF`, `CRAWL_RESPECT_ROBOTS`,
-    `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`, `CRAWL_USE_FIRECRAWL`, `FIRECRAWL_API_KEY`, `FIRECRAWL_BASE_URL`,
+    `CRAWL_DELAY_SECONDS`, `CRAWL_USER_AGENT`, `CRAWL_USE_FIRECRAWL`, `CRAWL_PREFER_GOOGLE_OCR`,
+    `FIRECRAWL_API_KEY`, `FIRECRAWL_BASE_URL`,
     `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION`, `GOOGLE_DOCUMENT_AI_PROCESSOR_ID`,
     `GOOGLE_DOCUMENT_AI_PROCESSOR_VERSION`, `GOOGLE_APPLICATION_CREDENTIALS`, `CITATION_MIN_AUTHORITY`.
   - Deep orchestration knobs:
@@ -132,6 +133,7 @@ Operational notes
 - Persistence: Run logs are stored in SQLite (`DATABASE_URL`).
 - Safety: Validation and merge agents call external scripts expected from the upstream repo; until wired, they are placeholders.
 - CRA-only mode: set `RESEARCH_SCOPE=CRA` to focus extraction + validation on criminal history reporting rules only (ban-the-box and employer-side obligations omitted).
+- OCR: `fetch_and_extract` sets `meta.ocr_engine` when OCR is used (`google_document_ai`, `google_vision`, or `unstructured:<strategy>`).
 
 Contributing
 - Run `pytest` before pushing. Keep code readable and typed.
