@@ -179,6 +179,7 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
     text = None
     ocr_engine = None
     content_type = None
+    is_pdf_like = url.lower().endswith((".pdf", ".jpg", ".jpeg", ".png"))
     try:
         timeout = float(os.getenv("CRAWL_HTTP_TIMEOUT", "20"))
         resp = httpx.get(url, headers={"User-Agent": ua}, timeout=timeout, follow_redirects=True)
@@ -186,6 +187,10 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
             downloaded = resp.text
             binary = resp.content
             content_type = resp.headers.get("content-type")
+            if content_type:
+                lowered = content_type.lower()
+                if "pdf" in lowered or lowered.startswith("image/"):
+                    is_pdf_like = True
             text = trafilatura.extract(downloaded, include_tables=True, include_links=True)
         else:
             logger.warning(f"http status={resp.status_code} url={url}")
@@ -214,7 +219,6 @@ def fetch_and_extract(url: str, threshold: int = 500, ocr_strategy: str = "ocr_o
 
     # Fallbacks when content is too short or likely PDF/image
     needs_fallback = not text or len(text or "") < threshold
-    is_pdf_like = url.lower().endswith((".pdf", ".jpg", ".jpeg", ".png"))
     # Also detect by content-type when available in headers
     try:
         if downloaded is None:
