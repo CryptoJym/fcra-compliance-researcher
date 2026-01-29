@@ -12,8 +12,7 @@ def test_build_agent_optional_imports():
     assert agent is None or hasattr(agent, "invoke")
 
 
-<<<<<<< HEAD
-=======
+
 def test_validate_hop_logic_without_langgraph(monkeypatch):
     # Validate hop increment behavior mirrors module implementation:
     # - needs_refine True increments hop until reaching DEEP_MAX_HOPS
@@ -63,5 +62,3 @@ def test_validate_hop_logic_without_langgraph(monkeypatch):
     assert needs_refine is False
     assert hop == 2
 
-
->>>>>>> origin/main

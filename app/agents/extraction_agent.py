@@ -4,15 +4,12 @@ import json
 from datetime import datetime, UTC
 from typing import Any, Dict, List, Optional
 
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
 
 try:
-    from langchain_openai import ChatOpenAI  # Newer package
+    from langchain_openai import ChatOpenAI
 except Exception:
-    try:
-        from langchain.chat_models import ChatOpenAI  # Backward compat
-    except Exception:
-        ChatOpenAI = None  # type: ignore
+    ChatOpenAI = None  # type: ignore
 
 from .base import Agent
 from ..config.settings import settings
