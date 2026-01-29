@@ -9,7 +9,7 @@ from .cross_validation import confidence_metrics
 
 
 def _scope() -> str:
-    return os.getenv("RESEARCH_SCOPE", "FCRA").strip().upper()
+    return os.getenv("RESEARCH_SCOPE", "CRA").strip().upper()
 
 
 def load_patch(patch_path: Path) -> Dict[str, Any]:
