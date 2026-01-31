@@ -25,7 +25,8 @@ def test_required_and_citations(tmp_path: Path):
     assert any("citations" in e for e in details["errors"]) and any("Missing required field" in e for e in details["errors"]) 
 
 
-def test_infer_preemption(tmp_path: Path):
+def test_infer_preemption(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("RESEARCH_SCOPE", "FCRA")
     patch = {
         "schema_version": "v1",
         "jurisdiction": "unified/city/test.json",
